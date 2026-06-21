@@ -6,7 +6,7 @@ Aplicação web para organizar cursos, acompanhar aulas, assistir a vídeos do Y
 
 - Next.js 15, React 19 e TypeScript
 - Tailwind CSS, componentes no padrão Shadcn/UI e Lucide Icons
-- Prisma ORM com SQLite no desenvolvimento
+- Prisma ORM com PostgreSQL
 - Zod e Server Actions
 - Vitest
 
@@ -27,7 +27,7 @@ npx prisma migrate dev --name init
 npm run dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000). A migration cria automaticamente `prisma/dev.db`.
+Acesse [http://localhost:3000](http://localhost:3000).
 
 Também é possível executar toda a preparação de uma vez:
 
@@ -77,32 +77,29 @@ prisma/
 
 ## Banco de dados
 
-O desenvolvimento usa SQLite por meio de:
+O projeto está configurado para PostgreSQL por meio de:
 
 ```env
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://USUARIO:SENHA@HOST:5432/postgres"
 ```
 
-O arquivo do banco não deve ser versionado. Para inspecionar os dados, execute `npm run db:studio`.
+Para inspecionar os dados, execute `npm run db:studio`.
 
-### PostgreSQL em produção
+### SQLite local
 
-SQLite local não é adequado para uma aplicação hospedada na Vercel porque o sistema de arquivos da função é efêmero. Para produção, use PostgreSQL no Supabase, Neon, Railway ou em uma VPS.
-
-Altere o datasource em `prisma/schema.prisma`:
+Se você quiser voltar ao fluxo original com SQLite local, altere o datasource em `prisma/schema.prisma` para:
 
 ```prisma
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 ```
 
-Depois, configure `DATABASE_URL` com a conexão PostgreSQL, crie uma migration compatível e aplique-a:
+E use:
 
-```bash
-npx prisma migrate dev --name postgresql_init
-npm run db:deploy
+```env
+DATABASE_URL="file:./dev.db"
 ```
 
 Na Vercel, adicione `DATABASE_URL` em **Project Settings → Environment Variables** e use `npm run build` como comando de build. Nunca envie o arquivo `.env` ao GitHub.

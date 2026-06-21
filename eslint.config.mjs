@@ -2,4 +2,18 @@ import { FlatCompat } from "@eslint/eslintrc";
 
 const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 
-export default [...compat.extends("next/core-web-vitals", "next/typescript")];
+const eslintConfig = [
+  {
+    ignores: [
+      ".next/**",
+      "coverage/**",
+      "node_modules/**",
+      "next-env.d.ts",
+      "prisma/dev.db",
+      "prisma/dev.db-journal",
+    ],
+  },
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+];
+
+export default eslintConfig;
