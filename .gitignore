@@ -9,4 +9,6 @@ coverage
 .vercel
 .pnpm-store
 .env*.local
+desktop.ini
+Thumbs.db
 
