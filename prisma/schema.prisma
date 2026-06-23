@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Course {
+  id           String      @id @default(cuid())
+  name         String
+  url          String?
+  totalLessons Int
+  lessons      Lesson[]
+  studyNotes   StudyNote[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Lesson {
+  id           String    @id @default(cuid())
+  courseId     String
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonNumber Int
+  completed    Boolean   @default(false)
+  completedAt  DateTime?
+  notes        String?
+  studyNotes   StudyNote[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([courseId, lessonNumber])
+}
+
+model StudyNote {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId  String?  @unique
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  videoUrl  String?
+  videoId   String?
+  content   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
