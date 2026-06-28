@@ -4,42 +4,153 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%; --foreground: 222 47% 11%;
-    --card: 0 0% 100%; --card-foreground: 222 47% 11%;
-    --primary: 245 58% 51%; --primary-foreground: 210 40% 98%;
-    --secondary: 214 32% 91%; --secondary-foreground: 222 47% 11%;
-    --muted: 214 32% 91%; --muted-foreground: 215 16% 47%;
-    --accent: 214 32% 91%; --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 60%; --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 88%; --input: 214 32% 88%; --ring: 245 58% 51%; --radius: 0.75rem;
+    --background: 220 43% 97%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 248 72% 54%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 33% 94%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 33% 94%;
+    --muted-foreground: 220 12% 43%;
+    --accent: 248 80% 96%;
+    --accent-foreground: 248 72% 26%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 24% 88%;
+    --input: 220 24% 88%;
+    --ring: 248 72% 54%;
+    --radius: 1rem;
   }
+
   .dark {
-    --background: 222 47% 7%; --foreground: 210 40% 98%;
-    --card: 222 40% 10%; --card-foreground: 210 40% 98%;
-    --primary: 245 80% 68%; --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 18%; --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 18%; --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 18%; --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%; --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 18%; --input: 217 33% 18%; --ring: 245 80% 68%;
+    --background: 226 48% 7%;
+    --foreground: 210 40% 98%;
+    --card: 225 37% 10%;
+    --card-foreground: 210 40% 98%;
+    --primary: 250 95% 72%;
+    --primary-foreground: 226 48% 7%;
+    --secondary: 222 32% 16%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 32% 16%;
+    --muted-foreground: 216 18% 68%;
+    --accent: 246 48% 18%;
+    --accent-foreground: 247 90% 88%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 222 27% 20%;
+    --input: 222 27% 20%;
+    --ring: 250 95% 72%;
   }
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 34rem),
+      radial-gradient(circle at 85% 12%, hsl(199 89% 48% / 0.12), transparent 30rem),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.16), transparent 34rem),
+      radial-gradient(circle at 85% 12%, hsl(199 89% 48% / 0.12), transparent 30rem),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  }
+
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
 }
 
 @layer components {
-  .markdown-preview h1 { @apply mb-4 mt-2 text-2xl font-bold; }
-  .markdown-preview h2 { @apply mb-3 mt-5 text-xl font-semibold; }
-  .markdown-preview h3 { @apply mb-2 mt-4 text-lg font-semibold; }
-  .markdown-preview p { @apply my-3 leading-7; }
-  .markdown-preview ul { @apply my-3 list-disc space-y-1 pl-6; }
-  .markdown-preview ol { @apply my-3 list-decimal space-y-1 pl-6; }
-  .markdown-preview blockquote { @apply my-4 border-l-4 border-primary/40 pl-4 italic text-muted-foreground; }
-  .markdown-preview code { @apply rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em]; }
-  .markdown-preview pre { @apply my-4 overflow-x-auto rounded-lg bg-slate-950 p-4 text-slate-100; }
-  .markdown-preview pre code { @apply bg-transparent p-0; }
-  .markdown-preview a { @apply font-medium text-primary underline underline-offset-4; }
-  .markdown-preview table { @apply my-4 w-full border-collapse; }
-  .markdown-preview th, .markdown-preview td { @apply border px-3 py-2 text-left; }
-  .markdown-preview hr { @apply my-6; }
+  .page-shell {
+    @apply mx-auto w-full max-w-7xl space-y-8;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.22em] text-primary;
+  }
+
+  .hero-surface {
+    @apply overflow-hidden rounded-[2rem] border bg-card/90 p-6 shadow-soft backdrop-blur-xl md:p-8;
+  }
+
+  .surface-card {
+    @apply rounded-[1.35rem] border bg-card/90 shadow-soft backdrop-blur-xl;
+  }
+
+  .soft-panel {
+    @apply rounded-2xl border bg-background/60 backdrop-blur;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground;
+  }
+
+  .markdown-preview h1 {
+    @apply mb-4 mt-2 text-2xl font-bold tracking-tight;
+  }
+
+  .markdown-preview h2 {
+    @apply mb-3 mt-5 text-xl font-semibold tracking-tight;
+  }
+
+  .markdown-preview h3 {
+    @apply mb-2 mt-4 text-lg font-semibold;
+  }
+
+  .markdown-preview p {
+    @apply my-3 leading-7;
+  }
+
+  .markdown-preview ul {
+    @apply my-3 list-disc space-y-1 pl-6;
+  }
+
+  .markdown-preview ol {
+    @apply my-3 list-decimal space-y-1 pl-6;
+  }
+
+  .markdown-preview blockquote {
+    @apply my-4 rounded-r-xl border-l-4 border-primary/40 bg-primary/5 py-2 pl-4 italic text-muted-foreground;
+  }
+
+  .markdown-preview code {
+    @apply rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.9em];
+  }
+
+  .markdown-preview pre {
+    @apply my-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-slate-100;
+  }
+
+  .markdown-preview pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .markdown-preview a {
+    @apply font-medium text-primary underline underline-offset-4;
+  }
+
+  .markdown-preview table {
+    @apply my-4 w-full border-collapse overflow-hidden rounded-xl;
+  }
+
+  .markdown-preview th,
+  .markdown-preview td {
+    @apply border px-3 py-2 text-left;
+  }
+
+  .markdown-preview hr {
+    @apply my-6;
+  }
 }

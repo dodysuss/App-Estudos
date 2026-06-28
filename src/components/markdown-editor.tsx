@@ -1,9 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Bold, Code2, Eye, Heading2, Italic, Link2, List, ListOrdered, Pencil, Quote } from "lucide-react";
+import { useRef } from "react";
+import { Bold, Code2, Heading2, Italic, Link2, List, ListOrdered, Loader2, Quote, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -11,10 +9,12 @@ type MarkdownEditorProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  onPublish?: () => void;
+  publishing?: boolean;
+  publishDisabled?: boolean;
 };
 
-export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorProps) {
-  const [mode, setMode] = useState<"write" | "preview">("write");
+export function MarkdownEditor({ value, onChange, placeholder, onPublish, publishing = false, publishDisabled = false }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function insert(before: string, after = "", fallback = "texto") {
@@ -44,26 +44,31 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
 
   return (
     <div className="overflow-hidden rounded-lg border bg-background">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 p-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 p-2">
         <div className="flex flex-wrap gap-1">
           {tools.map(({ label, icon: Icon, action }) => (
-            <Button key={label} type="button" variant="ghost" size="icon" className="h-8 w-8" title={label} aria-label={label} onClick={action} disabled={mode === "preview"}>
+            <Button key={label} type="button" variant="ghost" size="icon" className="h-8 w-8" title={label} aria-label={label} onClick={action}>
               <Icon className="h-4 w-4" />
             </Button>
           ))}
         </div>
-        <div className="flex rounded-md bg-secondary p-0.5">
-          <Button type="button" size="sm" variant={mode === "write" ? "default" : "ghost"} className="h-7 px-2.5 text-xs" onClick={() => setMode("write")}><Pencil className="h-3.5 w-3.5" />Editar</Button>
-          <Button type="button" size="sm" variant={mode === "preview" ? "default" : "ghost"} className="h-7 px-2.5 text-xs" onClick={() => setMode("preview")}><Eye className="h-3.5 w-3.5" />Visualizar</Button>
-        </div>
+
+        {onPublish && (
+          <Button type="button" size="sm" className="h-8 px-3 text-xs" onClick={onPublish} disabled={publishing || publishDisabled}>
+            {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            Publicar
+          </Button>
+        )}
       </div>
-      {mode === "write" ? (
-        <Textarea ref={textareaRef} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-72 resize-y rounded-none border-0 focus-visible:ring-0" placeholder={placeholder} maxLength={100000} />
-      ) : (
-        <div className="markdown-preview min-h-72 p-4 text-sm">
-          {value.trim() ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a> }}>{value}</ReactMarkdown> : <p className="text-muted-foreground">Nada para visualizar ainda.</p>}
-        </div>
-      )}
+
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-72 resize-y rounded-none border-0 focus-visible:ring-0"
+        placeholder={placeholder}
+        maxLength={100000}
+      />
     </div>
   );
 }

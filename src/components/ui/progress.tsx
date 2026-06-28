@@ -4,13 +4,13 @@ export function Progress({ value, className }: { value: number; className?: stri
   const safeValue = Math.min(100, Math.max(0, value));
   return (
     <div
-      className={cn("h-2 w-full overflow-hidden rounded-full bg-secondary", className)}
+      className={cn("h-2.5 w-full overflow-hidden rounded-full bg-secondary", className)}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={safeValue}
     >
-      <div className="h-full bg-primary transition-all duration-500" style={{ width: `${safeValue}%` }} />
+      <div className="h-full rounded-full bg-gradient-to-r from-primary to-sky-400 transition-all duration-700" style={{ width: `${safeValue}%` }} />
     </div>
   );
 }

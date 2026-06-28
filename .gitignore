@@ -11,4 +11,6 @@ coverage
 .env*.local
 desktop.ini
 Thumbs.db
+server*.log
+public/uploads
 

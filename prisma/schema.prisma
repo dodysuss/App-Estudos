@@ -9,40 +9,99 @@ datasource db {
 }
 
 model Course {
-  id           String      @id @default(cuid())
+  id           String           @id @default(cuid())
   name         String
+  description  String?
   url          String?
+  kind         String           @default("COURSE")
+  subject      String?
+  tags         String[]         @default([])
   totalLessons Int
   lessons      Lesson[]
+  modules      CourseModule[]
   studyNotes   StudyNote[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  materials    CourseMaterial[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([kind])
 }
 
 model Lesson {
-  id           String    @id @default(cuid())
+  id           String        @id @default(cuid())
   courseId     String
-  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessonNumber Int
-  completed    Boolean   @default(false)
+  position     Int           @default(0)
+  title        String?
+  moduleId     String?
+  module       CourseModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  completed    Boolean       @default(false)
   completedAt  DateTime?
   notes        String?
+  rating       Int           @default(0)
+  pinned       Boolean       @default(false)
   studyNotes   StudyNote[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@unique([courseId, lessonNumber])
+  @@index([moduleId])
+  @@index([courseId, pinned, position])
+  @@index([courseId, moduleId, position])
 }
 
-model StudyNote {
+model CourseModule {
   id        String   @id @default(cuid())
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessonId  String?  @unique
-  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  videoUrl  String?
-  videoId   String?
-  content   String?
+  name      String
+  position  Int
+  lessons   Lesson[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([courseId, position])
+  @@index([courseId])
+}
+
+model StudyNote {
+  id               String                 @id @default(cuid())
+  courseId         String
+  course           Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId         String?                @unique
+  lesson           Lesson?                @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  videoUrl         String?
+  videoId          String?
+  content          String?
+  publishedContent String?
+  publishedAt      DateTime?
+  publications     StudyNotePublication[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+}
+
+model StudyNotePublication {
+  id          String    @id @default(cuid())
+  studyNoteId String
+  studyNote   StudyNote @relation(fields: [studyNoteId], references: [id], onDelete: Cascade)
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([studyNoteId, createdAt])
+}
+
+model CourseMaterial {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  fileName   String
+  storedName String
+  mimeType   String
+  size       Int
+  url        String
+  createdAt  DateTime @default(now())
+
+  @@index([courseId])
 }

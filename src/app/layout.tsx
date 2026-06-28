@@ -15,11 +15,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} overflow-x-hidden`}>
         <ThemeProvider>
           <Sidebar />
           <Topbar />
-          <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 lg:ml-64">{children}</main>
+          <main className="min-h-[calc(100vh-4rem)] px-4 py-6 md:px-8 md:py-8 lg:ml-72">{children}</main>
         </ThemeProvider>
       </body>
     </html>
