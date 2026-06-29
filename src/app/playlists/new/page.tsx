@@ -3,10 +3,19 @@ import { ArrowLeft, ListVideo, NotebookPen, PlaySquare } from "lucide-react";
 import { CourseForm } from "@/components/course-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = { title: "Nova playlist" };
 
-export default function NewPlaylistPage() {
+export default async function NewPlaylistPage() {
+  const user = await requireUser();
+  const folders = await prisma.folder.findMany({
+    where: { userId: user.id, scope: "VIDEO_PLAYLIST" },
+    select: { id: true, name: true, parentId: true },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.8fr_1.2fr]">
       <aside className="space-y-4">
@@ -46,7 +55,7 @@ export default function NewPlaylistPage() {
           <CardDescription>Cole a URL pública da playlist. O app fará a importação automaticamente.</CardDescription>
         </CardHeader>
         <CardContent>
-          <CourseForm kind="VIDEO_PLAYLIST" />
+          <CourseForm kind="VIDEO_PLAYLIST" folders={folders} />
         </CardContent>
       </Card>
     </div>

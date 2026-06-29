@@ -1,15 +1,16 @@
-import { BookOpen, CheckCircle2, CircleDashed, ListVideo, TrendingUp } from "lucide-react";
+import { BookOpen, Boxes, CheckCircle2, CircleDashed, ListVideo, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
 export function DashboardStats({
   stats,
 }: {
-  stats: { courses: number; playlists: number; lessons: number; completed: number; pending: number; progress: number };
+  stats: { courses: number; playlists: number; assets: number; lessons: number; completed: number; pending: number; progress: number };
 }) {
   const items = [
     { label: "Cursos", value: stats.courses, icon: BookOpen, tone: "bg-indigo-500/10 text-indigo-500" },
     { label: "Playlists", value: stats.playlists, icon: ListVideo, tone: "bg-fuchsia-500/10 text-fuchsia-500" },
+    { label: "Ativos", value: stats.assets, icon: Boxes, tone: "bg-sky-500/10 text-sky-500" },
     { label: "Concluídos", value: stats.completed, icon: CheckCircle2, tone: "bg-emerald-500/10 text-emerald-500" },
     { label: "Pendentes", value: stats.pending, icon: CircleDashed, tone: "bg-amber-500/10 text-amber-500" },
   ];
@@ -34,7 +35,7 @@ export function DashboardStats({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {items.map(({ label, value, icon: Icon, tone }) => (
           <Card key={label} className="transition hover:-translate-y-0.5 hover:border-primary/25">
             <CardContent className="flex items-center justify-between gap-4 p-5">

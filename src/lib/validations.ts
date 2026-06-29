@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DIGITAL_ASSET_TYPES, DEFAULT_ASSET_TYPE } from "@/lib/digital-assets";
 import { extractYouTubePlaylistId, extractYouTubeVideoId } from "@/lib/youtube";
 import { normalizeWebUrl } from "@/lib/web-url";
 
@@ -34,6 +35,11 @@ const optionalSubject = z.preprocess(
   z.string().trim().max(80, "Use no máximo 80 caracteres.").optional(),
 );
 
+const optionalCuid = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().cuid().optional(),
+);
+
 const tagsSchema = z.preprocess(
   (value) => typeof value === "string" ? value.split(",").map((tag) => tag.trim()).filter(Boolean) : value,
   z.array(z.string().trim().min(1).max(30, "Cada tag pode ter no máximo 30 caracteres."))
@@ -53,6 +59,7 @@ export const courseSchema = z.discriminatedUnion("kind", [
     description: optionalDescription,
     url: optionalUrl,
     kind: z.literal("COURSE"),
+    folderId: optionalCuid,
     subject: optionalSubject,
     tags: tagsSchema,
     totalLessons: totalLessonsSchema,
@@ -62,6 +69,7 @@ export const courseSchema = z.discriminatedUnion("kind", [
     description: optionalDescription,
     url: requiredPlaylistUrl,
     kind: z.literal("VIDEO_PLAYLIST"),
+    folderId: optionalCuid,
     subject: optionalSubject,
     tags: tagsSchema,
     totalLessons: z.preprocess(
@@ -78,6 +86,14 @@ export const courseDetailsSchema = z.object({
   url: optionalUrl,
   subject: optionalSubject,
   tags: tagsSchema,
+});
+
+export const courseIdentitySchema = z.object({
+  courseId: z.string().cuid(),
+});
+
+export const refreshPlaylistSchema = z.object({
+  courseId: z.string().cuid(),
 });
 
 export const lessonToggleSchema = z.object({
@@ -177,6 +193,86 @@ export const studyNoteIdentitySchema = z.object({
 
 export const studyNotePublicationIdentitySchema = studyNoteIdentitySchema.extend({
   publicationId: z.string().cuid(),
+});
+
+const emailSchema = z
+  .string()
+  .trim()
+  .email("Informe um e-mail válido.")
+  .max(120, "Use no máximo 120 caracteres.")
+  .transform((value) => value.toLocaleLowerCase("pt-BR"));
+
+export const registerSchema = z
+  .object({
+    name: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().trim().max(80, "Use no máximo 80 caracteres.").optional(),
+    ),
+    email: emailSchema,
+    password: z.string().min(8, "Use pelo menos 8 caracteres.").max(200, "Senha muito longa."),
+    confirmPassword: z.string().min(1, "Confirme sua senha."),
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "As senhas não conferem.",
+  });
+
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, "Informe sua senha.").max(200, "Senha muito longa."),
+});
+
+const optionalShortText = (max: number, message: string) =>
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().max(max, message).optional(),
+  );
+
+const optionalAssetImageUrl = z.preprocess(
+  normalizeWebUrl,
+  z.string().trim().url("Informe uma URL de imagem válida.").optional(),
+);
+
+const optionalHexColor = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z
+    .string()
+    .trim()
+    .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/, "Informe uma cor hexadecimal válida.")
+    .optional(),
+);
+
+export const digitalAssetSchema = z.object({
+  title: z.string().trim().min(1, "O título é obrigatório.").max(120, "Use no máximo 120 caracteres."),
+  description: optionalShortText(240, "Use no máximo 240 caracteres."),
+  tags: tagsSchema,
+  category: optionalShortText(80, "Use no máximo 80 caracteres."),
+  assetType: z.enum(DIGITAL_ASSET_TYPES).default(DEFAULT_ASSET_TYPE),
+  content: z.string().max(100_000, "O conteúdo está muito longo.").optional(),
+  coverImage: optionalAssetImageUrl,
+  coverColor: optionalHexColor,
+  folderId: optionalCuid,
+});
+
+export const digitalAssetUpdateSchema = digitalAssetSchema.extend({
+  assetId: z.string().cuid(),
+});
+
+export const digitalAssetIdentitySchema = z.object({
+  assetId: z.string().cuid(),
+});
+
+export const digitalAssetFlagSchema = digitalAssetIdentitySchema.extend({
+  value: z.boolean(),
+});
+
+export const folderScopeSchema = z.enum(["COURSE", "VIDEO_PLAYLIST", "DIGITAL_ASSET"]);
+
+export const folderCreateSchema = z.object({
+  name: z.string().trim().min(1, "Informe o nome da pasta.").max(80, "Use no máximo 80 caracteres."),
+  description: optionalShortText(160, "Use no máximo 160 caracteres."),
+  scope: folderScopeSchema,
+  parentId: optionalCuid,
 });
 
 export type CourseInput = z.infer<typeof courseSchema>;

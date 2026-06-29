@@ -6,15 +6,17 @@ import { createCourse, type CourseFormState } from "@/actions/course-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { FolderSelect } from "@/components/folder-select";
+import type { FolderOption } from "@/lib/folders";
 
 type CourseKind = "COURSE" | "VIDEO_PLAYLIST";
-type FieldName = "name" | "description" | "url" | "totalLessons" | "subject" | "tags";
+type FieldName = "name" | "description" | "url" | "totalLessons" | "subject" | "tags" | "folderId";
 
 const initialState: CourseFormState = {};
 
-export function CourseForm({ kind = "COURSE" }: { kind?: CourseKind }) {
+export function CourseForm({ kind = "COURSE", folders = [] }: { kind?: CourseKind; folders?: FolderOption[] }) {
   const [state, action, pending] = useActionState(createCourse, initialState);
-  const [values, setValues] = useState({ name: "", description: "", url: "", totalLessons: "", subject: "", tags: "" });
+  const [values, setValues] = useState({ name: "", description: "", url: "", totalLessons: "", subject: "", tags: "", folderId: "" });
   const [editedFields, setEditedFields] = useState<Set<FieldName>>(new Set());
   const isPlaylist = kind === "VIDEO_PLAYLIST";
 
@@ -35,6 +37,14 @@ export function CourseForm({ kind = "COURSE" }: { kind?: CourseKind }) {
   return (
     <form action={action} className="space-y-6" noValidate>
       <input type="hidden" name="kind" value={kind} />
+
+      <div className="space-y-2">
+        <label htmlFor="folderId" className="text-sm font-medium">
+          Pasta <span className="text-muted-foreground">(opcional)</span>
+        </label>
+        <FolderSelect folders={folders} value={values.folderId} onChange={(value) => updateField("folderId", value)} />
+        <p className="text-xs text-muted-foreground">Use para organizar em pastas e subpastas.</p>
+      </div>
 
       <div className="space-y-2">
         <label htmlFor="name" className="text-sm font-medium">

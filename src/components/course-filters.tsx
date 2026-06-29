@@ -12,6 +12,7 @@ export function CourseFilters({
   showSubjects = false,
   itemLabel = "curso",
   clearHref = "/",
+  folderId,
 }: {
   search: string;
   status: string;
@@ -21,9 +22,11 @@ export function CourseFilters({
   showSubjects?: boolean;
   itemLabel?: string;
   clearHref?: string;
+  folderId?: string;
 }) {
   return (
     <form className="surface-card p-4 md:p-5" method="get">
+      {folderId && <input type="hidden" name="folder" value={folderId} />}
       <div className="mb-4 flex items-center gap-2">
         <span className="rounded-xl bg-primary/10 p-2 text-primary">
           <SlidersHorizontal className="h-4 w-4" />

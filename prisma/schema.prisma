@@ -10,10 +10,14 @@ datasource db {
 
 model Course {
   id           String           @id @default(cuid())
+  userId       String?
+  user         User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   description  String?
   url          String?
   kind         String           @default("COURSE")
+  folderId     String?
+  folder       Folder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
   subject      String?
   tags         String[]         @default([])
   totalLessons Int
@@ -25,6 +29,52 @@ model Course {
   updatedAt    DateTime         @updatedAt
 
   @@index([kind])
+  @@index([userId, kind])
+  @@index([folderId])
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  passwordHash  String
+  courses       Course[]
+  sessions      AuthSession[]
+  digitalAssets DigitalAsset[]
+  folders       Folder[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Folder {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  scope         String
+  parentId      String?
+  parent        Folder?        @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children      Folder[]       @relation("FolderTree")
+  courses       Course[]
+  digitalAssets DigitalAsset[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([userId, scope, parentId, name])
+  @@index([userId, scope])
+  @@index([parentId])
+}
+
+model AuthSession {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Lesson {
@@ -104,4 +154,33 @@ model CourseMaterial {
   createdAt  DateTime @default(now())
 
   @@index([courseId])
+}
+
+model DigitalAsset {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  folderId         String?
+  folder           Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  tags             String[]  @default([])
+  category         String?
+  assetType        String    @default("Nota")
+  content          String?
+  publishedContent String?
+  publishedAt      DateTime?
+  coverImage       String?
+  coverColor       String?
+  pinned           Boolean   @default(false)
+  favorite         Boolean   @default(false)
+  archived         Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, archived, pinned, updatedAt])
+  @@index([userId, favorite])
+  @@index([folderId])
+  @@index([userId, category])
+  @@index([userId, assetType])
 }

@@ -8,6 +8,7 @@ export type DecoratedCourse = {
   name: string;
   description: string | null;
   kind: CourseKind;
+  folderId: string | null;
   subject: string | null;
   tags: string[];
   totalLessons: number;
@@ -19,9 +20,9 @@ export type DecoratedCourse = {
   updatedAt: Date;
 };
 
-export async function getDecoratedCourses(kind?: CourseKind): Promise<DecoratedCourse[]> {
+export async function getDecoratedCourses(userId: string, kind?: CourseKind): Promise<DecoratedCourse[]> {
   const courses = await prisma.course.findMany({
-    where: kind ? { kind } : undefined,
+    where: { userId, ...(kind ? { kind } : {}) },
     include: { lessons: { select: { lessonNumber: true, completed: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -33,6 +34,7 @@ export async function getDecoratedCourses(kind?: CourseKind): Promise<DecoratedC
       name: course.name,
       description: course.description,
       kind: course.kind === "VIDEO_PLAYLIST" ? "VIDEO_PLAYLIST" : "COURSE",
+      folderId: course.folderId,
       subject: course.subject,
       tags: course.tags,
       totalLessons: course.totalLessons,
@@ -48,7 +50,7 @@ export async function getDecoratedCourses(kind?: CourseKind): Promise<DecoratedC
 
 export function filterDecoratedCourses(
   courses: DecoratedCourse[],
-  query: { search: string; status: string; sort: string; subjects: string[] },
+  query: { search: string; status: string; sort: string; subjects: string[]; folderId?: string },
 ) {
   const search = query.search.toLocaleLowerCase("pt-BR");
   return [...courses]
@@ -61,6 +63,7 @@ export function filterDecoratedCourses(
         ...course.tags,
       ].some((value) => value.toLocaleLowerCase("pt-BR").includes(search));
     })
+    .filter((course) => !query.folderId || course.folderId === query.folderId)
     .filter((course) => query.status === "all" || course.status === query.status)
     .filter((course) => query.subjects.length === 0 || (course.subject && query.subjects.includes(course.subject)))
     .sort((a, b) => {
@@ -71,12 +74,13 @@ export function filterDecoratedCourses(
     });
 }
 
-export function normalizeCourseQuery(query: { search?: string; status?: string; sort?: string; subject?: string | string[] }) {
+export function normalizeCourseQuery(query: { search?: string; status?: string; sort?: string; subject?: string | string[]; folder?: string }) {
   const subjects = (Array.isArray(query.subject) ? query.subject : query.subject ? [query.subject] : []).map((subject) => subject.trim()).filter(Boolean);
   return {
     search: query.search?.trim() ?? "",
     status: ["not-started", "in-progress", "completed"].includes(query.status ?? "") ? query.status! : "all",
     sort: ["name", "progress-desc", "progress-asc"].includes(query.sort ?? "") ? query.sort! : "created",
     subjects,
+    folderId: query.folder?.trim() || undefined,
   };
 }

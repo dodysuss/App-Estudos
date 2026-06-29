@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const MAX_MATERIAL_SIZE = 50 * 1024 * 1024;
@@ -26,6 +27,7 @@ export async function uploadCourseMaterial(
   _previousState: MaterialUploadState,
   formData: FormData,
 ): Promise<MaterialUploadState> {
+  const user = await requireUser();
   const courseId = String(formData.get("courseId") ?? "");
   const file = formData.get("material");
 
@@ -42,7 +44,7 @@ export async function uploadCourseMaterial(
   }
 
   const course = await prisma.course.findFirst({
-    where: { id: courseId, kind: "COURSE" },
+    where: { id: courseId, kind: "COURSE", userId: user.id },
     select: { id: true },
   });
   if (!course) return { success: false, message: "Curso não encontrado." };

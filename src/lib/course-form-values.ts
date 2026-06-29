@@ -4,6 +4,7 @@ export type CourseFormValues = {
   url: string;
   totalLessons: string;
   kind: "COURSE" | "VIDEO_PLAYLIST";
+  folderId: string;
   subject: string;
   tags: string;
 };
@@ -15,6 +16,7 @@ export function readCourseFormValues(formData: FormData): CourseFormValues {
     url: String(formData.get("url") ?? ""),
     totalLessons: String(formData.get("totalLessons") ?? ""),
     kind: formData.get("kind") === "VIDEO_PLAYLIST" ? "VIDEO_PLAYLIST" : "COURSE",
+    folderId: String(formData.get("folderId") ?? ""),
     subject: String(formData.get("subject") ?? ""),
     tags: String(formData.get("tags") ?? ""),
   };

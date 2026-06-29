@@ -1,18 +1,29 @@
 import Link from "next/link";
 import { BookOpen, Plus } from "lucide-react";
 import { filterDecoratedCourses, getDecoratedCourses, normalizeCourseQuery } from "@/lib/course-list";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/course-card";
 import { CourseFilters } from "@/components/course-filters";
+import { FolderCreateForm } from "@/components/folder-create-form";
+import { buildFolderOptions } from "@/lib/folders";
 
-type SearchParams = Promise<{ search?: string; status?: string; sort?: string; subject?: string | string[] }>;
+type SearchParams = Promise<{ search?: string; status?: string; sort?: string; subject?: string | string[]; folder?: string }>;
 
 export const metadata = { title: "Cursos" };
 
 export default async function CoursesPage({ searchParams }: { searchParams: SearchParams }) {
+  const user = await requireUser();
   const query = normalizeCourseQuery(await searchParams);
-  const allCourses = await getDecoratedCourses("COURSE");
+  const allCourses = await getDecoratedCourses(user.id, "COURSE");
   const courses = filterDecoratedCourses(allCourses, query);
+  const folders = await prisma.folder.findMany({
+    where: { userId: user.id, scope: "COURSE" },
+    select: { id: true, name: true, parentId: true },
+    orderBy: { name: "asc" },
+  });
+  const folderOptions = buildFolderOptions(folders);
   const subjects = [...new Set(allCourses.map((course) => course.subject).filter((subject): subject is string => Boolean(subject)))]
     .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
@@ -36,7 +47,21 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         </div>
       </section>
 
-      <CourseFilters search={query.search} status={query.status} sort={query.sort} subjects={subjects} selectedSubjects={query.subjects} showSubjects clearHref="/courses" />
+      <CourseFilters search={query.search} status={query.status} sort={query.sort} subjects={subjects} selectedSubjects={query.subjects} showSubjects clearHref="/courses" folderId={query.folderId} />
+
+      <section className="space-y-3">
+        <FolderCreateForm scope="COURSE" folders={folders} />
+        {folderOptions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant={!query.folderId ? "secondary" : "outline"} size="sm"><Link href="/courses">Todas as pastas</Link></Button>
+            {folderOptions.map((folder) => (
+              <Button key={folder.id} asChild variant={query.folderId === folder.id ? "secondary" : "outline"} size="sm">
+                <Link href={`/courses?folder=${folder.id}`}>{folder.label}</Link>
+              </Button>
+            ))}
+          </div>
+        )}
+      </section>
 
       {courses.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{courses.map((course) => <CourseCard key={course.id} course={course} />)}</div>

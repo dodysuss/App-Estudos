@@ -1,17 +1,28 @@
 import Link from "next/link";
 import { ListVideo, Plus } from "lucide-react";
 import { filterDecoratedCourses, getDecoratedCourses, normalizeCourseQuery } from "@/lib/course-list";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/course-card";
 import { CourseFilters } from "@/components/course-filters";
+import { FolderCreateForm } from "@/components/folder-create-form";
+import { buildFolderOptions } from "@/lib/folders";
 
-type SearchParams = Promise<{ search?: string; status?: string; sort?: string; subject?: string | string[] }>;
+type SearchParams = Promise<{ search?: string; status?: string; sort?: string; subject?: string | string[]; folder?: string }>;
 
 export const metadata = { title: "Playlists de vídeos" };
 
 export default async function PlaylistsPage({ searchParams }: { searchParams: SearchParams }) {
+  const user = await requireUser();
   const query = normalizeCourseQuery(await searchParams);
-  const playlists = filterDecoratedCourses(await getDecoratedCourses("VIDEO_PLAYLIST"), query);
+  const playlists = filterDecoratedCourses(await getDecoratedCourses(user.id, "VIDEO_PLAYLIST"), query);
+  const folders = await prisma.folder.findMany({
+    where: { userId: user.id, scope: "VIDEO_PLAYLIST" },
+    select: { id: true, name: true, parentId: true },
+    orderBy: { name: "asc" },
+  });
+  const folderOptions = buildFolderOptions(folders);
 
   return (
     <div className="page-shell">
@@ -33,7 +44,21 @@ export default async function PlaylistsPage({ searchParams }: { searchParams: Se
         </div>
       </section>
 
-      <CourseFilters search={query.search} status={query.status} sort={query.sort} itemLabel="playlist" clearHref="/playlists" />
+      <CourseFilters search={query.search} status={query.status} sort={query.sort} itemLabel="playlist" clearHref="/playlists" folderId={query.folderId} />
+
+      <section className="space-y-3">
+        <FolderCreateForm scope="VIDEO_PLAYLIST" folders={folders} />
+        {folderOptions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant={!query.folderId ? "secondary" : "outline"} size="sm"><Link href="/playlists">Todas as pastas</Link></Button>
+            {folderOptions.map((folder) => (
+              <Button key={folder.id} asChild variant={query.folderId === folder.id ? "secondary" : "outline"} size="sm">
+                <Link href={`/playlists?folder=${folder.id}`}>{folder.label}</Link>
+              </Button>
+            ))}
+          </div>
+        )}
+      </section>
 
       {playlists.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{playlists.map((playlist) => <CourseCard key={playlist.id} course={playlist} />)}</div>

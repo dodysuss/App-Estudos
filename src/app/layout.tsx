@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AppShell } from "@/components/app-shell";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Sidebar } from "@/components/sidebar";
-import { Topbar } from "@/components/topbar";
+import { getCurrentUser } from "@/lib/auth";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -12,14 +12,18 @@ export const metadata: Metadata = {
   description: "Acompanhe cursos, aulas, vídeos e anotações em um só lugar.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const user = await getCurrentUser();
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.className} overflow-x-hidden`}>
         <ThemeProvider>
-          <Sidebar />
-          <Topbar />
-          <main className="min-h-[calc(100vh-4rem)] px-4 py-6 md:px-8 md:py-8 lg:ml-72">{children}</main>
+          {user ? (
+            <AppShell currentUser={user}>{children}</AppShell>
+          ) : (
+            children
+          )}
         </ThemeProvider>
       </body>
     </html>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpenText, CheckCircle2, Layers3, ListChecks, PlaySquare } from "lucide-react";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateProgress, getNextLesson } from "@/lib/progress";
 import type { CourseKind } from "@/lib/course-list";
@@ -11,10 +12,12 @@ import { LessonChecklist } from "@/components/lesson-checklist";
 import { CourseSettingsForm } from "@/components/course-settings-form";
 import { CourseModuleManager } from "@/components/course-module-manager";
 import { CourseMaterials } from "@/components/course-materials";
+import { DeleteCollectionButton, RefreshPlaylistButton } from "@/components/collection-actions";
 
 export async function CollectionDetail({ id, kind }: { id: string; kind: CourseKind }) {
+  const user = await requireUser();
   const item = await prisma.course.findFirst({
-    where: { id, kind },
+    where: { id, kind, userId: user.id },
     include: {
       modules: { orderBy: { position: "asc" } },
       materials: { orderBy: { createdAt: "desc" } },
@@ -39,7 +42,7 @@ export async function CollectionDetail({ id, kind }: { id: string; kind: CourseK
   const completed = item.lessons.filter((lesson) => lesson.completed).length;
   const progress = calculateProgress(completed, item.totalLessons);
   const nextLesson = getNextLesson(item.lessons);
-  const studyNotesCount = item.lessons.filter((lesson) => lesson.studyNotes.some((note) => note.content || note.videoUrl)).length;
+  const studyNotesCount = item.lessons.filter((lesson) => lesson.studyNotes.some((note) => note.content || note.videoUrl || note.publications.length > 0)).length;
 
   return (
     <div className="page-shell">
@@ -55,7 +58,12 @@ export async function CollectionDetail({ id, kind }: { id: string; kind: CourseK
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="eyebrow">{collectionName}</span>
-              {progress === 100 && <span className="pill border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Concluído</span>}
+              {progress === 100 && (
+                <span className="pill border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Concluído
+                </span>
+              )}
             </div>
             <h1 className="mt-3 max-w-4xl text-4xl font-bold tracking-tight md:text-5xl">{item.name}</h1>
             {item.description && <p className="mt-4 max-w-3xl text-base text-muted-foreground">{item.description}</p>}
@@ -63,27 +71,45 @@ export async function CollectionDetail({ id, kind }: { id: string; kind: CourseK
               {item.totalLessons} {plural} • {completed} concluídos • {studyNotesCount} com anotações
             </p>
 
-            {!isPlaylist && (item.subject || item.tags.length > 0) && (
+            {(item.subject || item.tags.length > 0) && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {item.subject && <span className="pill border-primary/20 bg-primary/10 text-primary">{item.subject}</span>}
-                {item.tags.map((tag) => <span key={tag} className="pill">#{tag}</span>)}
+                {item.tags.map((tag) => (
+                  <span key={tag} className="pill">
+                    #{tag}
+                  </span>
+                ))}
               </div>
             )}
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              {isPlaylist ? (
-                <CourseSettingsForm course={{ id: item.id, kind: "VIDEO_PLAYLIST", name: item.name, description: item.description, url: item.url, subject: item.subject, tags: item.tags }} />
-              ) : (
-                <>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/courses/${item.id}/notes`}>
-                      <BookOpenText className="h-4 w-4" />
-                      Anotações do curso
-                    </Link>
-                  </Button>
-                  <CourseSettingsForm course={{ id: item.id, kind: "COURSE", name: item.name, description: item.description, url: item.url, subject: item.subject, tags: item.tags }} />
-                </>
+            <div className="mt-6 flex flex-wrap items-start gap-4">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/notes?collection=${item.id}`}>
+                  <BookOpenText className="h-4 w-4" />
+                  Anotações e publicações
+                </Link>
+              </Button>
+              {!isPlaylist && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/courses/${item.id}/notes`}>
+                    <BookOpenText className="h-4 w-4" />
+                    Anotações do curso
+                  </Link>
+                </Button>
               )}
+              <CourseSettingsForm
+                course={{
+                  id: item.id,
+                  kind: isPlaylist ? "VIDEO_PLAYLIST" : "COURSE",
+                  name: item.name,
+                  description: item.description,
+                  url: item.url,
+                  subject: item.subject,
+                  tags: item.tags,
+                }}
+              />
+              {isPlaylist && <RefreshPlaylistButton courseId={item.id} />}
+              <DeleteCollectionButton courseId={item.id} kind={isPlaylist ? "VIDEO_PLAYLIST" : "COURSE"} name={item.name} />
             </div>
           </div>
 

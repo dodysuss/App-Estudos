@@ -4,13 +4,15 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowLeft, BookOpenText, NotebookPen } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function CourseNotesPage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await requireUser();
   const { id } = await params;
   const course = await prisma.course.findFirst({
-    where: { id, kind: "COURSE" },
+    where: { id, kind: "COURSE", userId: user.id },
     include: {
       modules: { orderBy: { position: "asc" } },
       lessons: {

@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Bold, Code2, Heading2, Italic, Link2, List, ListOrdered, Loader2, Quote, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 type MarkdownEditorProps = {
   value: string;
@@ -12,9 +13,10 @@ type MarkdownEditorProps = {
   onPublish?: () => void;
   publishing?: boolean;
   publishDisabled?: boolean;
+  textareaClassName?: string;
 };
 
-export function MarkdownEditor({ value, onChange, placeholder, onPublish, publishing = false, publishDisabled = false }: MarkdownEditorProps) {
+export function MarkdownEditor({ value, onChange, placeholder, onPublish, publishing = false, publishDisabled = false, textareaClassName }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function insert(before: string, after = "", fallback = "texto") {
@@ -65,7 +67,7 @@ export function MarkdownEditor({ value, onChange, placeholder, onPublish, publis
         ref={textareaRef}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-72 resize-y rounded-none border-0 focus-visible:ring-0"
+        className={cn("min-h-72 resize-y rounded-none border-0 focus-visible:ring-0", textareaClassName)}
         placeholder={placeholder}
         maxLength={100000}
       />

@@ -3,10 +3,19 @@ import { ArrowLeft, BookOpen, Layers3, NotebookPen } from "lucide-react";
 import { CourseForm } from "@/components/course-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = { title: "Novo curso" };
 
-export default function NewCoursePage() {
+export default async function NewCoursePage() {
+  const user = await requireUser();
+  const folders = await prisma.folder.findMany({
+    where: { userId: user.id, scope: "COURSE" },
+    select: { id: true, name: true, parentId: true },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.8fr_1.2fr]">
       <aside className="space-y-4">
@@ -46,7 +55,7 @@ export default function NewCoursePage() {
           <CardDescription>Preencha os dados básicos. Campos corretos permanecem preenchidos se houver erro.</CardDescription>
         </CardHeader>
         <CardContent>
-          <CourseForm />
+          <CourseForm folders={folders} />
         </CardContent>
       </Card>
     </div>

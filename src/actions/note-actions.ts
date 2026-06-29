@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractYouTubeVideoId } from "@/lib/youtube";
 import { publishStudyNoteSchema, studyNotePublicationIdentitySchema, studyNoteSchema } from "@/lib/validations";
@@ -15,7 +16,15 @@ export type PublishStudyNoteResult =
   | { success: true; updatedAt: string; publication: PublishedNotePayload; mode: "created" | "updated" }
   | { success: false; error: string };
 
+function revalidateNotePages(courseId: string) {
+  revalidatePath("/notes");
+  revalidatePath(`/courses/${courseId}`);
+  revalidatePath(`/playlists/${courseId}`);
+  revalidatePath(`/courses/${courseId}/notes`);
+}
+
 export async function saveStudyNote(input: unknown): Promise<MutationResult> {
+  const user = await requireUser();
   const parsed = studyNoteSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -31,11 +40,15 @@ export async function saveStudyNote(input: unknown): Promise<MutationResult> {
   try {
     const note = await prisma.$transaction(async (transaction) => {
       const lesson = await transaction.lesson.findFirst({
-        where: { id: parsed.data.lessonId, courseId: parsed.data.courseId },
+        where: {
+          id: parsed.data.lessonId,
+          courseId: parsed.data.courseId,
+          course: { is: { userId: user.id } },
+        },
       });
       if (!lesson) throw new Error("LESSON_NOT_FOUND");
-      const existing = await transaction.studyNote.findUnique({
-        where: { lessonId: parsed.data.lessonId },
+      const existing = await transaction.studyNote.findFirst({
+        where: { lessonId: parsed.data.lessonId, courseId: parsed.data.courseId, course: { is: { userId: user.id } } },
       });
       return existing
         ? transaction.studyNote.update({ where: { id: existing.id }, data })
@@ -43,8 +56,7 @@ export async function saveStudyNote(input: unknown): Promise<MutationResult> {
             data: { courseId: parsed.data.courseId, lessonId: parsed.data.lessonId, ...data },
           });
     });
-    revalidatePath(`/courses/${parsed.data.courseId}`);
-    revalidatePath(`/playlists/${parsed.data.courseId}`);
+    revalidateNotePages(parsed.data.courseId);
     return { success: true, updatedAt: note.updatedAt.toISOString() };
   } catch (error) {
     console.error("Erro ao salvar anotações", error);
@@ -53,6 +65,7 @@ export async function saveStudyNote(input: unknown): Promise<MutationResult> {
 }
 
 export async function publishStudyNote(input: unknown): Promise<PublishStudyNoteResult> {
+  const user = await requireUser();
   const parsed = publishStudyNoteSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Anotação inválida." };
@@ -68,12 +81,16 @@ export async function publishStudyNote(input: unknown): Promise<PublishStudyNote
   try {
     const result = await prisma.$transaction(async (transaction) => {
       const lesson = await transaction.lesson.findFirst({
-        where: { id: parsed.data.lessonId, courseId: parsed.data.courseId },
+        where: {
+          id: parsed.data.lessonId,
+          courseId: parsed.data.courseId,
+          course: { is: { userId: user.id } },
+        },
       });
       if (!lesson) throw new Error("LESSON_NOT_FOUND");
 
-      const existing = await transaction.studyNote.findUnique({
-        where: { lessonId: parsed.data.lessonId },
+      const existing = await transaction.studyNote.findFirst({
+        where: { lessonId: parsed.data.lessonId, courseId: parsed.data.courseId, course: { is: { userId: user.id } } },
       });
 
       const note = existing
@@ -84,7 +101,11 @@ export async function publishStudyNote(input: unknown): Promise<PublishStudyNote
 
       if (parsed.data.publicationId) {
         const updated = await transaction.studyNotePublication.updateMany({
-          where: { id: parsed.data.publicationId, studyNoteId: note.id },
+          where: {
+            id: parsed.data.publicationId,
+            studyNoteId: note.id,
+            studyNote: { is: { course: { is: { userId: user.id } } } },
+          },
           data: { content: parsed.data.content },
         });
         if (updated.count === 0) throw new Error("PUBLICATION_NOT_FOUND");
@@ -101,8 +122,7 @@ export async function publishStudyNote(input: unknown): Promise<PublishStudyNote
       return { note, publication, mode: "created" as const };
     });
 
-    revalidatePath(`/courses/${parsed.data.courseId}`);
-    revalidatePath(`/playlists/${parsed.data.courseId}`);
+    revalidateNotePages(parsed.data.courseId);
     return {
       success: true,
       updatedAt: result.note.updatedAt.toISOString(),
@@ -119,23 +139,31 @@ export async function publishStudyNote(input: unknown): Promise<PublishStudyNote
 }
 
 export async function deletePublishedStudyNote(input: unknown): Promise<MutationResult> {
+  const user = await requireUser();
   const parsed = studyNotePublicationIdentitySchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Anotação inválida." };
 
   try {
     const existing = await prisma.studyNote.findFirst({
-      where: { lessonId: parsed.data.lessonId, courseId: parsed.data.courseId },
+      where: {
+        lessonId: parsed.data.lessonId,
+        courseId: parsed.data.courseId,
+        course: { is: { userId: user.id } },
+      },
       select: { id: true },
     });
 
     if (!existing) return { success: true, updatedAt: new Date().toISOString() };
 
     await prisma.studyNotePublication.deleteMany({
-      where: { id: parsed.data.publicationId, studyNoteId: existing.id },
+      where: {
+        id: parsed.data.publicationId,
+        studyNoteId: existing.id,
+        studyNote: { is: { course: { is: { userId: user.id } } } },
+      },
     });
 
-    revalidatePath(`/courses/${parsed.data.courseId}`);
-    revalidatePath(`/playlists/${parsed.data.courseId}`);
+    revalidateNotePages(parsed.data.courseId);
     return { success: true, updatedAt: new Date().toISOString() };
   } catch (error) {
     console.error("Erro ao apagar anotação publicada", error);

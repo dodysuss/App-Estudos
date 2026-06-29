@@ -93,40 +93,39 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
         />
       </div>
 
-      {!isPlaylist && (
-        <>
-          <div className="space-y-2 sm:col-span-2">
-            <label htmlFor="edit-course-url" className="text-sm font-medium">Link do curso</label>
-            <Input
-              id="edit-course-url"
-              value={values.url}
-              onChange={(event) => setValues((current) => ({ ...current, url: event.target.value }))}
-              placeholder="plataforma.com/curso"
-            />
-          </div>
+      <div className="space-y-2 sm:col-span-2">
+        <label htmlFor="edit-course-url" className="text-sm font-medium">
+          {isPlaylist ? "Link da playlist" : "Link do curso"}
+        </label>
+        <Input
+          id="edit-course-url"
+          value={values.url}
+          onChange={(event) => setValues((current) => ({ ...current, url: event.target.value }))}
+          placeholder={isPlaylist ? "youtube.com/playlist?list=..." : "plataforma.com/curso"}
+        />
+        {isPlaylist && <p className="text-xs text-muted-foreground">Depois de trocar o link, use “Atualizar vídeos” para importar novos itens.</p>}
+      </div>
 
-          <div className="space-y-2">
-            <label htmlFor="edit-course-subject" className="text-sm font-medium">Assunto</label>
-            <Input
-              id="edit-course-subject"
-              value={values.subject}
-              onChange={(event) => setValues((current) => ({ ...current, subject: event.target.value }))}
-              placeholder="Ex.: Programação"
-            />
-          </div>
+      <div className="space-y-2">
+        <label htmlFor="edit-course-subject" className="text-sm font-medium">Assunto</label>
+        <Input
+          id="edit-course-subject"
+          value={values.subject}
+          onChange={(event) => setValues((current) => ({ ...current, subject: event.target.value }))}
+          placeholder="Ex.: Programação"
+        />
+      </div>
 
-          <div className="space-y-2">
-            <label htmlFor="edit-course-tags" className="text-sm font-medium">Tags</label>
-            <Input
-              id="edit-course-tags"
-              value={values.tags}
-              onChange={(event) => setValues((current) => ({ ...current, tags: event.target.value }))}
-              placeholder="typescript, frontend"
-            />
-            <p className="text-xs text-muted-foreground">Separe com vírgulas.</p>
-          </div>
-        </>
-      )}
+      <div className="space-y-2">
+        <label htmlFor="edit-course-tags" className="text-sm font-medium">Tags</label>
+        <Input
+          id="edit-course-tags"
+          value={values.tags}
+          onChange={(event) => setValues((current) => ({ ...current, tags: event.target.value }))}
+          placeholder="typescript, frontend"
+        />
+        <p className="text-xs text-muted-foreground">Separe com vírgulas.</p>
+      </div>
 
       {error && <p className="text-sm text-destructive sm:col-span-2" role="alert">{error}</p>}
 
