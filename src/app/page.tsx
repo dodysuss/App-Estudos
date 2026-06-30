@@ -10,6 +10,7 @@ import { DashboardStats } from "@/components/dashboard-stats";
 import { CourseCard } from "@/components/course-card";
 import { CourseFilters } from "@/components/course-filters";
 import { uniqueSorted } from "@/lib/search-filters";
+import { cn } from "@/lib/utils";
 
 type SearchParams = Promise<{ search?: string; semantic?: string; category?: string; tag?: string | string[]; status?: string; sort?: string }>;
 
@@ -69,47 +70,51 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
 
   return (
     <div className="page-shell">
-      <section className="hero-surface">
+      <section className="hero-surface bg-gradient-to-br from-card/90 via-card/75 to-background/50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 h-40 w-40 bg-primary/10 blur-3xl rounded-full" />
         <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
           <div>
-            <p className="eyebrow">Painel de estudos</p>
-            <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight md:text-5xl">
+            <p className="eyebrow flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Painel de estudos
+            </p>
+            <h1 className="mt-3 max-w-3xl text-3xl font-extrabold tracking-tight sm:text-5xl text-foreground">
               Continue aprendendo sem perder onde parou.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+            <p className="mt-4 max-w-xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
               Cursos, playlists, ativos digitais, materiais e anotações em um painel único — desenhado para abrir, estudar e registrar progresso com pouco atrito.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild>
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              <Button asChild className="rounded-xl text-xs">
                 <Link href="/courses/new">
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5 mr-1" />
                   Novo curso
                 </Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="rounded-xl bg-background/50 text-xs">
                 <Link href="/playlists/new">
-                  <ListVideo className="h-4 w-4" />
+                  <ListVideo className="h-3.5 w-3.5 mr-1" />
                   Importar playlist
                 </Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="rounded-xl bg-background/50 text-xs">
                 <Link href="/assets/new">
-                  <Boxes className="h-4 w-4" />
+                  <Boxes className="h-3.5 w-3.5 mr-1" />
                   Novo ativo
                 </Link>
               </Button>
             </div>
           </div>
 
-          <div className="rounded-3xl border bg-background/70 p-5">
+          <div className="rounded-2xl border bg-background/50 p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="rounded-2xl bg-primary/10 p-3 text-primary">
-                <Sparkles className="h-6 w-6" />
+              <span className="rounded-xl bg-primary/10 p-2.5 text-primary">
+                <Sparkles className="h-5 w-5 animate-pulse" />
               </span>
-              <span className="text-4xl font-bold tracking-tight">{progress}%</span>
+              <span className="text-3xl font-extrabold tracking-tight text-foreground">{progress}%</span>
             </div>
-            <p className="mt-5 text-sm font-semibold">Resumo do momento</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Resumo do momento</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {completedLessons} itens concluídos, {totalLessons - completedLessons} pendentes e {activeAssets} ativos digitais.
             </p>
           </div>
@@ -118,25 +123,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
 
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-label="Áreas de estudo">
         {menuCards.map(({ title, description, count, href, createHref, createLabel, icon: Icon, tone }) => (
-          <Card key={title} className="group overflow-hidden transition hover:-translate-y-1 hover:border-primary/30">
-            <CardContent className={`bg-gradient-to-br p-6 md:p-7 ${tone}`}>
-              <div className="flex items-start justify-between gap-4">
-                <span className="rounded-3xl bg-background/80 p-3 shadow-sm">
-                  <Icon className="h-7 w-7" />
-                </span>
-                <span className="pill bg-background/80 text-foreground">{count} {count === 1 ? "item" : "itens"}</span>
+          <Card key={title} className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-md">
+            <CardContent className={cn("bg-gradient-to-br p-6 md:p-7 h-full flex flex-col justify-between", tone)}>
+              <div>
+                <div className="flex items-start justify-between gap-4">
+                  <span className="rounded-xl bg-background/80 p-2.5 shadow-sm border border-border/40">
+                    <Icon className="h-6 w-6" />
+                  </span>
+                  <span className="rounded-full bg-background/80 border border-border/40 px-2.5 py-0.5 text-3xs font-bold text-muted-foreground">{count} {count === 1 ? "item" : "itens"}</span>
+                </div>
+                <h2 className="mt-6 text-xl font-bold tracking-tight text-foreground">{title}</h2>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
               </div>
-              <h2 className="mt-8 text-2xl font-bold tracking-tight text-foreground">{title}</h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{description}</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button asChild>
+              <div className="mt-6 flex flex-wrap gap-2 pt-4 border-t border-border/40">
+                <Button asChild size="sm" className="rounded-lg text-xs">
                   <Link href={href}>
-                    Abrir <ArrowRight className="h-4 w-4" />
+                    Abrir <ArrowRight className="h-3.5 w-3.5 ml-1" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" size="sm" className="rounded-lg bg-background/50 text-xs">
                   <Link href={createHref}>
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5 mr-1" />
                     {createLabel}
                   </Link>
                 </Button>

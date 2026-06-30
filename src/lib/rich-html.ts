@@ -1,3 +1,5 @@
+import DOMPurify from "isomorphic-dompurify";
+
 function escapeAttribute(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -29,15 +31,22 @@ function sanitizeIframe(attrs: string) {
 }
 
 export function sanitizeRichHtml(value: string) {
-  return value
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+  const cleanHtml = DOMPurify.sanitize(value, {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "u", "s", "ol", "ul", "li",
+      "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "code",
+      "a", "img", "table", "thead", "tbody", "tr", "th", "td", "iframe",
+      "span", "div"
+    ],
+    ALLOWED_ATTR: [
+      "href", "target", "rel", "src", "alt", "title", "class", "style",
+      "loading", "referrerpolicy", "allow", "allowfullscreen", "sandbox"
+    ],
+    ADD_TAGS: ["iframe"]
+  });
+
+  return cleanHtml
     .replace(/<iframe\b([^>]*)>[\s\S]*?<\/iframe>/gi, (_match, attrs: string) => sanitizeIframe(attrs))
-    .replace(/<object[\s\S]*?>[\s\S]*?<\/object>/gi, "")
-    .replace(/<embed[\s\S]*?>/gi, "")
-    .replace(/\s+on\w+=(["'])[\s\S]*?\1/gi, "")
-    .replace(/\s+on\w+=\S+/gi, "")
-    .replace(/\s+(href|src)=(["'])\s*javascript:[\s\S]*?\2/gi, ' $1="#"')
     .trim();
 }
 

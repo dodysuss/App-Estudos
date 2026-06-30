@@ -407,3 +407,73 @@ export async function reorderDigitalAssetStages(input: unknown): Promise<Digital
     return { success: false, error: "Não foi possível salvar a ordem das etapas." };
   }
 }
+
+export async function getSidebarData() {
+  try {
+    const user = await requireUser();
+    const assets = await prisma.digitalAsset.findMany({
+      where: { userId: user.id },
+      select: { category: true, tags: true, archived: true, pinned: true, favorite: true, assetType: true },
+    });
+
+    const activeAssets = assets.filter((a) => !a.archived);
+
+    const categoriesMap: Record<string, number> = {};
+    activeAssets.forEach((a) => {
+      if (a.category?.trim()) {
+        const cat = a.category.trim();
+        categoriesMap[cat] = (categoriesMap[cat] || 0) + 1;
+      }
+    });
+    const categories = Object.entries(categoriesMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"))
+      .slice(0, 10); // Limit to top 10
+
+    const tagsMap: Record<string, number> = {};
+    activeAssets.forEach((a) => {
+      a.tags.forEach((t) => {
+        const tag = t.trim();
+        if (tag) {
+          tagsMap[tag] = (tagsMap[tag] || 0) + 1;
+        }
+      });
+    });
+    const tags = Object.entries(tagsMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"))
+      .slice(0, 12); // Limit to top 12
+
+    const typesMap: Record<string, number> = {};
+    activeAssets.forEach((a) => {
+      typesMap[a.assetType] = (typesMap[a.assetType] || 0) + 1;
+    });
+
+    return {
+      success: true,
+      data: {
+        categories,
+        tags,
+        types: typesMap,
+        counts: {
+          total: activeAssets.length,
+          pinned: activeAssets.filter((a) => a.pinned).length,
+          favorite: activeAssets.filter((a) => a.favorite).length,
+          archived: assets.filter((a) => a.archived).length,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Erro ao obter dados da sidebar:", error);
+    return {
+      success: false,
+      error: "Falha ao carregar metadados da barra lateral",
+      data: {
+        categories: [],
+        tags: [],
+        types: {},
+        counts: { total: 0, pinned: 0, favorite: 0, archived: 0 },
+      },
+    };
+  }
+}

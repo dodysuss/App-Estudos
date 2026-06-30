@@ -1,134 +1,139 @@
-# App de Estudos
+# 🧠 Banco Intelectual & App de Estudos
 
-Aplicação web para organizar cursos e playlists de vídeos, acompanhar aulas, registrar progresso e manter anotações em Markdown.
+> Uma plataforma pessoal premium e centralizada para catalogar cursos, gerenciar playlists do YouTube, registrar progresso acadêmico e guardar anotações, hacks, prompts, códigos e ativos digitais em formato de cartões interativos.
 
-## Tecnologias
+---
 
-- Next.js 15, React 19 e TypeScript
-- Tailwind CSS, componentes Shadcn/UI e Lucide Icons
-- Prisma ORM e PostgreSQL
-- Docker Compose para o banco local
-- Zod, Server Actions e Vitest
+## 🎨 Galeria & Interface Visual
 
-## Requisitos
+Abaixo estão representados os locais recomendados para inclusão de capturas de tela das principais visões do sistema:
 
-- Node.js 20.9 ou mais recente
-- npm 10 ou mais recente
-- Docker Desktop
+| Dashboard Geral (Linear Style) | Editor de Cards (Notion/Medium) | Modo Leitura Pública (Obsidian/Arc) |
+| :---: | :---: | :---: |
+| ![Dashboard Geral](docs/assets/dashboard.png) | ![Editor de Cards](docs/assets/editor.png) | ![Modo Leitura](docs/assets/published.png) |
 
-## Instalação local automatizada
+---
 
-Depois de clonar o projeto, execute:
+## 🚀 Principais Funcionalidades
 
-```bash
-npm install
-npm run setup:local
-npm run dev
+### 📂 Banco Intelectual (Cards & Ativos Digitais)
+* **Visualização Premium:** Cards organizados com capas customizadas por cores ou URLs de imagens, com suporte a visualização em Grade (Grid) ou Lista horizontal.
+* **Ações em Hover:** Ações rápidas para Fixar (Pin) e Favoritar (Favorite) com atalhos de hover, e menu de contexto de reticências (`...`) para Duplicar, Arquivar, Copiar Link e Excluir.
+* **Filtros e Busca Refinada:** Busca instantânea textual e semântica com pílulas e chips interativos para remover filtros ativos de categorias e tags.
+
+### 📚 Cursos & Trilhas
+* **Checklist Automatizado:** Geração automática do progresso das aulas e status de conclusão.
+* **Estrutura por Módulos:** Criação e ordenação de módulos arrastáveis para estruturar cursos extensos.
+* **Materiais de Apoio:** Upload seguro de PDFs, slides e apostilas associados a cada curso, com controle rígido de extensões seguras contra XSS.
+
+### 🎥 Playlists do YouTube (Estudo Guiado)
+* **Importação Fácil:** Digite a URL de uma playlist pública do YouTube para importar automaticamente todos os vídeos associados como aulas do curso.
+* **Player Integrado:** Assista aos vídeos da playlist sem sair da plataforma, registrando anotações em Markdown sincronizadas por tempo e aulas.
+* **Autosave Inteligente:** Sistema de salvamento automático no editor de notas a cada 800ms de inatividade.
+
+---
+
+## 🛠️ Arquitetura do Sistema
+
+O fluxo de dados da aplicação funciona de forma robusta e otimizada por meio de Server Actions e renderização híbrida:
+
+```mermaid
+graph TD
+    Client[Cliente / React 19] -->|Next.js Server Actions| NextServer[Servidor Next.js 15 App Router]
+    NextServer -->|Higienização contra XSS| DomPurify[isomorphic-dompurify]
+    NextServer -->|Persistência / Relações| Prisma[Prisma Client ORM]
+    Prisma --> DB[(Banco PostgreSQL)]
+    NextServer -->|Scraping / Importação| YT[YouTube RSS & Feed API]
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000).
+---
 
-O comando `setup:local` realiza automaticamente:
+## 💻 Pilha Tecnológica
 
-1. Criação do `.env` a partir do `.env.example`, somente quando ele ainda não existe.
-2. Inicialização do Docker Desktop no Windows, se necessário.
-3. Inicialização do PostgreSQL local na porta `54329`.
-4. Espera pelo banco ficar saudável.
-5. Geração do Prisma Client.
-6. Aplicação das migrations pendentes.
+* **Core:** [Next.js 15](https://nextjs.org/) (App Router), [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/)
+* **Estilização:** Tailwind CSS v3, Radix UI Primitives, Lucide Icons
+* **Banco de Dados:** PostgreSQL, Prisma ORM
+* **Segurança:** PBKDF2/scrypt (`node:crypto`), `isomorphic-dompurify` (Sanitização de HTML), cookies de sessão HTTP-Only
+* **Testes & Tipos:** Vitest (Testes Unitários), Zod (Validação de Schemas)
 
-O `.env` existente nunca é sobrescrito. O banco usa um volume persistente do Docker, portanto os dados sobrevivem à reinicialização do contêiner.
+---
 
-## Estratégia dos arquivos de ambiente
+## ⚙️ Instalação Local e Configuração
 
-| Arquivo/local | Finalidade | Vai para o GitHub? |
-| --- | --- | --- |
-| `.env.example` | Configuração segura do PostgreSQL local | Sim |
-| `.env` | Configuração ativa da máquina do desenvolvedor | Não |
-| `.env.production.example` | Modelo das variáveis de produção | Sim |
-| Vercel Environment Variables | Credenciais reais de produção | Não |
+### Requisitos Mínimos
+* **Node.js:** Versão `20.9` ou superior
+* **npm:** Versão `10` ou superior
+* **Docker Desktop** (opcional, para inicialização do banco local automática)
 
-Nunca coloque senhas reais em `.env.example`, `.env.production.example`, commits, issues ou pull requests.
+### Passo a Passo
 
-## Scripts
+1. **Clonar o Repositório:**
+   ```bash
+   git clone https://github.com/usuario/meu-app-estudos.git
+   cd meu-app-estudos
+   ```
 
-| Comando | Descrição |
-| --- | --- |
-| `npm run setup:local` | Prepara `.env`, Docker, banco, migrations e Prisma |
-| `npm run db:local:up` | Inicia apenas o banco local |
-| `npm run db:local:stop` | Interrompe o banco sem apagar os dados |
-| `npm run dev` | Inicia o servidor de desenvolvimento |
-| `npm run build` | Gera o Prisma Client e cria o build de produção |
-| `npm start` | Inicia o build de produção |
-| `npm test` | Executa os testes unitários |
-| `npm run db:generate` | Gera o Prisma Client |
-| `npm run db:migrate` | Cria/aplica migrations de desenvolvimento |
-| `npm run db:deploy` | Aplica migrations existentes |
-| `npm run db:studio` | Abre o Prisma Studio |
-| `npm run db:reset` | Recria o banco e apaga seus dados |
+2. **Instalar Dependências:**
+   ```bash
+   npm install
+   ```
 
-## Funcionalidades
+3. **Configuração e Migrations Automáticas:**
+   O comando de setup prepara o `.env`, inicializa o banco local PostgreSQL no Docker (porta `54329`), roda as migrations e gera o Prisma Client automaticamente:
+   ```bash
+   npm run setup
+   ```
 
-- Dashboard separado em Cursos e Playlists de vídeos
-- Busca, filtros por status e ordenação
-- Cadastro que preserva os campos preenchidos quando ocorre erro de validação
-- Geração automática do checklist de aulas ou vídeos
-- Progresso, próximo item e datas de conclusão
-- Área de estudo individual em cada item
-- Player para URLs `watch`, `youtu.be`, `embed` e `shorts` do YouTube
-- Editor Markdown com pré-visualização e autosave
-- Temas claro/escuro e layout responsivo
+4. **Executar o Servidor de Desenvolvimento:**
+   ```bash
+   npm run dev
+   ```
+   Acesse [http://localhost:3000](http://localhost:3000) no seu navegador.
 
-## Banco local
+---
 
-O PostgreSQL local é definido em `docker-compose.yml` e usa:
+## 🔒 Estratégia de Segurança & Variáveis de Ambiente
 
-```env
-DATABASE_URL="postgresql://app_estudos:app_estudos_local@localhost:54329/app_estudos"
-DIRECT_URL="postgresql://app_estudos:app_estudos_local@localhost:54329/app_estudos"
-```
+As credenciais do banco de dados e segredos da aplicação são mantidos rigidamente fora do controle de versão:
 
-Essas credenciais são apenas locais. Para inspecionar os dados:
+| Arquivo | Finalidade | Versionado? |
+| :--- | :--- | :---: |
+| `.env.example` | Configuração padrão para ambiente de desenvolvimento local (Docker) | **Sim** |
+| `.env` | Credenciais ativas da sua máquina local | **Não** |
+| `.env.production.example` | Template de configuração para ambientes de produção (ex. Supabase/Neon) | **Sim** |
 
-```bash
-npm run db:studio
-```
+---
 
-## Produção na Vercel
+## 📈 Scripts Disponíveis
 
-Use PostgreSQL hospedado no Supabase, Neon, Railway ou em uma VPS. Na Vercel, configure `DATABASE_URL` e `DIRECT_URL` em **Project Settings → Environment Variables** para os ambientes Production, Preview e Development necessários.
+* `npm run dev` — Inicia o servidor de desenvolvimento.
+* `npm run build` — Compila a aplicação para produção (Gera Prisma Client e build Next.js).
+* `npm run test` — Executa todos os testes unitários via Vitest.
+* `npm run db:studio` — Abre o Prisma Studio para gerenciar dados do banco local.
+* `npm run db:migrate` — Gera e aplica novas migrations do Prisma em desenvolvimento.
+* `npm run db:deploy` — Aplica migrations existentes no ambiente de produção.
+* `npm run db:reset` — Limpa o banco de dados e executa as migrations do zero.
 
-- `DATABASE_URL`: conexão usada pela aplicação; com Supabase, prefira o pooler indicado pelo provedor.
-- `DIRECT_URL`: conexão direta usada para operações de migration.
+---
 
-Após configurar as variáveis, aplique as migrations com acesso ao ambiente de produção:
-
-```bash
-npm run db:deploy
-```
-
-O arquivo `.env.production.example` mostra apenas o formato esperado e não deve receber credenciais reais.
-
-## Estrutura
+## 📂 Estrutura de Pastas
 
 ```text
 scripts/
-  setup-local.mjs  Preparação automática do ambiente local
-src/
-  actions/         Server Actions
-  app/             Rotas do App Router
-  components/      Interface e componentes
-  lib/             Prisma, validações e regras de domínio
+  setup-local.mjs  # Automação de setup inicial do contêiner e rede local
 prisma/
-  migrations/      Histórico versionado do banco
-  schema.prisma    Modelagem dos dados
-docker-compose.yml PostgreSQL local persistente
+  migrations/      # Histórico de alterações do banco de dados PostgreSQL
+  schema.prisma    # Modelagem e relações Prisma ORM
+src/
+  actions/         # Server Actions (Cadastro, Cursos, Módulos, Ativos Digitais)
+  app/             # Rotas de página do Next.js (App Router)
+  components/      # Componentes UI (Sidebar, Topbar, Editores, Cards)
+  lib/             # Utilitários, sanitizadores, autenticação e Zod schemas
+docker-compose.yml # Definição do contêiner PostgreSQL local
 ```
 
-## Solução de problemas
+---
 
-- **Docker não iniciou:** abra o Docker Desktop e execute `npm run setup:local` novamente.
-- **Porta 54329 ocupada:** encerre o processo que usa a porta ou ajuste a porta em `docker-compose.yml`, `.env.example` e `.env`.
-- **Prisma Client não encontrado:** execute `npm run db:generate`.
-- **Banco fora de sincronia:** execute `npm run db:deploy`.
-- **Porta 3000 ocupada:** execute `npm run dev -- --port 3001`.
+## 🛡️ Licença
+
+Este projeto é de uso pessoal e privado. Todos os direitos reservados.

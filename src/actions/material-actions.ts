@@ -51,6 +51,19 @@ export async function uploadCourseMaterial(
 
   const originalName = sanitizeFileName(file.name);
   const extension = path.extname(originalName).slice(0, 20);
+
+  const dangerousExtensions = [
+    ".html", ".htm", ".svg", ".xml",
+    ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
+    ".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".phps",
+    ".jsp", ".jspx", ".gsp", ".asp", ".aspx", ".asa", ".asax", ".ashx", ".asmx", ".axd",
+    ".py", ".rb", ".pl", ".sh", ".cgi",
+    ".exe", ".bat", ".cmd", ".msi", ".vbs", ".lnk"
+  ];
+  if (dangerousExtensions.includes(extension.toLowerCase())) {
+    return { success: false, message: "Tipo de arquivo não permitido por motivos de segurança." };
+  }
+
   const storedName = `${randomUUID()}${extension}`;
   const uploadDir = path.join(process.cwd(), "public", "uploads", "materials", courseId);
   const uploadPath = path.join(uploadDir, storedName);

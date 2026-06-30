@@ -18,6 +18,7 @@ describe("readCourseFormValues", () => {
       url: "url-inválida",
       totalLessons: "24",
       kind: "COURSE",
+      folderId: "",
       subject: "Programação",
       tags: "typescript, frontend",
     });
