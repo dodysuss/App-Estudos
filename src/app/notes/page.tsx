@@ -1,48 +1,42 @@
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { BookOpenText, ExternalLink, NotebookPen, Search } from "lucide-react";
+import { BookOpenText, ExternalLink, NotebookPen, Search, Sparkles } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { matchesStandardFilters, normalizeStandardSearchQuery, uniqueSorted } from "@/lib/search-filters";
 
-type SearchParams = Promise<{ search?: string; collection?: string }>;
-
-function normalizeSearch(value?: string) {
-  return value?.trim().toLocaleLowerCase("pt-BR") ?? "";
-}
-
-function includesSearch(values: Array<string | null | undefined>, search: string) {
-  if (!search) return true;
-  return values.some((value) => value?.toLocaleLowerCase("pt-BR").includes(search));
-}
+type SearchParams = Promise<{ search?: string; semantic?: string; category?: string; tag?: string | string[] }>;
 
 export const metadata = { title: "Anotações" };
 
 export default async function NotesPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const params = await searchParams;
-  const search = normalizeSearch(params.search);
-  const collectionId = params.collection?.trim() || "";
+  const query = normalizeStandardSearchQuery(params);
 
   const [collections, notes] = await Promise.all([
     prisma.course.findMany({
       where: { userId: user.id },
-      select: { id: true, name: true, kind: true },
+      select: { id: true, name: true, kind: true, subject: true, tags: true },
       orderBy: { name: "asc" },
     }),
     prisma.studyNote.findMany({
-      where: { course: { is: { userId: user.id } }, ...(collectionId ? { courseId: collectionId } : {}) },
+      where: { course: { is: { userId: user.id } } },
       include: {
-        course: { select: { id: true, name: true, kind: true } },
+        course: { select: { id: true, name: true, kind: true, subject: true, tags: true } },
         lesson: { select: { lessonNumber: true, title: true, notes: true } },
         publications: { orderBy: { createdAt: "desc" } },
       },
       orderBy: { updatedAt: "desc" },
     }),
   ]);
+
+  const categories = uniqueSorted(collections.map((collection) => collection.subject));
+  const tags = uniqueSorted(collections.flatMap((collection) => collection.tags));
 
   const filteredNotes = notes
     .map((note) => ({
@@ -51,15 +45,21 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
       lessonTitle: note.lesson?.title || (note.lesson ? `${note.course.kind === "VIDEO_PLAYLIST" ? "Vídeo" : "Aula"} ${note.lesson.lessonNumber}` : "Anotação"),
     }))
     .filter((note) =>
-      includesSearch(
-        [
-          note.course.name,
-          note.lessonTitle,
-          note.lesson?.notes,
-          note.content,
-          ...note.publications.map((publication) => publication.content),
-        ],
-        search,
+      matchesStandardFilters(
+        {
+          text: [
+            note.course.name,
+            note.course.subject ?? "",
+            ...note.course.tags,
+            note.lessonTitle,
+            note.lesson?.notes,
+            note.content,
+            ...note.publications.map((publication) => publication.content),
+          ],
+          category: note.course.subject,
+          tags: note.course.tags,
+        },
+        query,
       ),
     )
     .filter((note) => Boolean(note.content?.trim() || note.lesson?.notes?.trim() || note.publications.length));
@@ -72,7 +72,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
             <p className="eyebrow">Central de conhecimento</p>
             <h1 className="mt-2 text-4xl font-bold tracking-tight">Todas as anotações e publicações</h1>
             <p className="mt-3 max-w-2xl text-muted-foreground">
-              Busque dentro das suas anotações em Markdown, publicações e anotações curtas de aulas e vídeos.
+              Busque dentro das suas anotações, publicações e anotações curtas de aulas e vídeos.
             </p>
           </div>
           <div className="rounded-3xl border bg-background/70 px-5 py-4">
@@ -83,29 +83,42 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
       </section>
 
       <form method="get" className="surface-card p-4 md:p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_260px_auto]">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold">Refinar anotações</h2>
+          <p className="text-xs text-muted-foreground">Busca textual, busca semântica, categoria e tags.</p>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
           <label className="relative">
             <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
-            <Input name="search" defaultValue={params.search ?? ""} placeholder="Buscar dentro das anotações..." className="pl-10" />
+            <Input name="search" defaultValue={params.search ?? ""} placeholder="Busca textual dentro das anotações..." className="pl-10" />
           </label>
 
-          <select name="collection" defaultValue={collectionId} className="h-11 rounded-xl border bg-background/80 px-3 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring">
-            <option value="">Todos os cursos e playlists</option>
-            {collections.map((collection) => (
-              <option key={collection.id} value={collection.id}>
-                {collection.kind === "VIDEO_PLAYLIST" ? "Playlist" : "Curso"} — {collection.name}
-              </option>
+          <label className="relative">
+            <Sparkles className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
+            <Input name="semantic" defaultValue={params.semantic ?? ""} placeholder="Busca semântica: ideia, dúvida, objetivo ou tema relacionado..." className="pl-10" />
+          </label>
+
+          <select name="category" defaultValue={query.category} className="h-11 rounded-xl border bg-background/80 px-3 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring">
+            <option value="">Todas as categorias</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
             ))}
           </select>
 
-          <div className="flex gap-2">
-            <Button type="submit" className="flex-1 lg:flex-none">
-              Procurar
-            </Button>
-            <Button asChild variant="outline" className="flex-1 lg:flex-none">
-              <Link href="/notes">Limpar</Link>
-            </Button>
-          </div>
+          <select name="tag" defaultValue={query.tags[0] ?? ""} className="h-11 rounded-xl border bg-background/80 px-3 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring">
+            <option value="">Todas as tags</option>
+            {tags.map((tag) => (
+              <option key={tag} value={tag}>#{tag}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-3 flex gap-2">
+          <Button type="submit" className="flex-1 lg:flex-none">Procurar</Button>
+          <Button asChild variant="outline" className="flex-1 lg:flex-none">
+            <Link href="/notes">Limpar</Link>
+          </Button>
         </div>
       </form>
 
@@ -122,6 +135,8 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
                     </CardTitle>
                     <CardDescription className="mt-2 flex flex-wrap gap-2">
                       <span>{note.course.kind === "VIDEO_PLAYLIST" ? "Playlist" : "Curso"}: {note.course.name}</span>
+                      {note.course.subject && <span>• {note.course.subject}</span>}
+                      {note.course.tags.map((tag) => <span key={tag}>• #{tag}</span>)}
                       {note.lesson && <span>• Item {note.lesson.lessonNumber}</span>}
                       {note.publications.length > 0 && <span>• {note.publications.length} publicação(ões)</span>}
                     </CardDescription>

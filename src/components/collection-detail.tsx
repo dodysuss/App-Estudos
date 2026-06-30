@@ -12,7 +12,7 @@ import { LessonChecklist } from "@/components/lesson-checklist";
 import { CourseSettingsForm } from "@/components/course-settings-form";
 import { CourseModuleManager } from "@/components/course-module-manager";
 import { CourseMaterials } from "@/components/course-materials";
-import { DeleteCollectionButton, RefreshPlaylistButton } from "@/components/collection-actions";
+import { AddPlaylistVideoButton, DeleteCollectionButton, RefreshPlaylistButton } from "@/components/collection-actions";
 
 export async function CollectionDetail({ id, kind }: { id: string; kind: CourseKind }) {
   const user = await requireUser();
@@ -108,6 +108,7 @@ export async function CollectionDetail({ id, kind }: { id: string; kind: CourseK
                   tags: item.tags,
                 }}
               />
+              {isPlaylist && <AddPlaylistVideoButton courseId={item.id} />}
               {isPlaylist && <RefreshPlaylistButton courseId={item.id} />}
               <DeleteCollectionButton courseId={item.id} kind={isPlaylist ? "VIDEO_PLAYLIST" : "COURSE"} name={item.name} />
             </div>

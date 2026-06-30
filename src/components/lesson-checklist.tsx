@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { type DragEvent, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, ChevronDown, FolderOpen, GripVertical, NotebookPen, Pencil, Pin, Star } from "lucide-react";
 import { reorderLessons, toggleLesson, toggleLessonPinned, updateLessonNotes, updateLessonRating, updateLessonTitle } from "@/actions/lesson-actions";
@@ -162,6 +162,30 @@ export function LessonChecklist({
   const isVideoList = itemLabel === "vídeo";
   const canDragLessons = allowModules || isVideoList;
 
+  function startLessonDrag(event: DragEvent, lessonId: string) {
+    event.stopPropagation();
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", lessonId);
+    event.dataTransfer.setData("application/x-lesson-id", lessonId);
+    setDragItem({ type: "lesson", id: lessonId });
+  }
+
+  function startModuleDrag(event: DragEvent, moduleId: string) {
+    event.stopPropagation();
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", moduleId);
+    event.dataTransfer.setData("application/x-module-id", moduleId);
+    setDragItem({ type: "module", id: moduleId });
+  }
+
+  function getDroppedLessonId(event: DragEvent) {
+    return dragItem?.type === "lesson" ? dragItem.id : event.dataTransfer.getData("application/x-lesson-id") || event.dataTransfer.getData("text/plain");
+  }
+
+  function getDroppedModuleId(event: DragEvent) {
+    return dragItem?.type === "module" ? dragItem.id : event.dataTransfer.getData("application/x-module-id");
+  }
+
   function sortLessons(items: LessonItem[]) {
     return [...items].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.position - b.position || a.lessonNumber - b.lessonNumber);
   }
@@ -299,7 +323,13 @@ export function LessonChecklist({
       <div
         key={lesson.id}
         onDragOver={(event) => { if (dragItem?.type === "lesson") event.preventDefault(); }}
-        onDrop={(event) => { event.preventDefault(); event.stopPropagation(); if (dragItem?.type === "lesson") moveLesson(dragItem.id, moduleId, lesson.id); setDragItem(null); }}
+        onDrop={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const droppedLessonId = getDroppedLessonId(event);
+          if (droppedLessonId) moveLesson(droppedLessonId, moduleId, lesson.id);
+          setDragItem(null);
+        }}
         className={`overflow-hidden rounded-2xl border transition ${lesson.completed ? "border-emerald-500/30 bg-emerald-500/10" : "bg-card/80 hover:border-primary/25"}`}
       >
         <div
@@ -312,17 +342,18 @@ export function LessonChecklist({
           className="group flex cursor-pointer items-center gap-2 p-3 transition hover:bg-accent/50 md:p-4"
         >
           {canDragLessons && (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
               draggable={!pending}
               onClick={(event) => event.stopPropagation()}
-              onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = "move"; setDragItem({ type: "lesson", id: lesson.id }); }}
+              onDragStart={(event) => startLessonDrag(event, lesson.id)}
               onDragEnd={() => setDragItem(null)}
               className="cursor-grab rounded-xl p-1 text-muted-foreground hover:bg-secondary active:cursor-grabbing"
               aria-label={`Arrastar ${isVideoList ? "vídeo" : "aula"} ${lesson.lessonNumber}`}
             >
               <GripVertical className="h-5 w-5" />
-            </button>
+            </span>
           )}
           <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
             <Checkbox checked={lesson.completed} onCheckedChange={(value) => changeCompleted(lesson.id, value === true)} aria-label={`Marcar ${itemLabel} ${lesson.lessonNumber} como ${lesson.completed ? "pendente" : "concluído"}`} />
@@ -381,12 +412,14 @@ export function LessonChecklist({
         return (
           <section
             key={section.id}
-            onDragOver={(event) => { if (isModuleSection && dragItem) event.preventDefault(); }}
+            onDragOver={(event) => { if (dragItem) event.preventDefault(); }}
             onDrop={(event) => {
-              if (!isModuleSection) return;
+              if (!dragItem) return;
               event.preventDefault();
-              if (dragItem?.type === "lesson") moveLesson(dragItem.id, sectionModuleId);
-              if (dragItem?.type === "module" && section.id !== "unassigned") moveModule(dragItem.id, section.id);
+              const droppedLessonId = getDroppedLessonId(event);
+              const droppedModuleId = getDroppedModuleId(event);
+              if (dragItem.type === "lesson" && droppedLessonId) moveLesson(droppedLessonId, sectionModuleId);
+              if (isModuleSection && section.id !== "unassigned" && dragItem.type === "module" && droppedModuleId) moveModule(droppedModuleId, section.id);
               setDragItem(null);
             }}
             className={isModuleSection ? "overflow-hidden rounded-3xl border bg-card/75" : "space-y-3"}
@@ -394,17 +427,18 @@ export function LessonChecklist({
             {isModuleSection && (
               <div className="flex items-center border-b bg-secondary/35">
                 {section.id !== "unassigned" && (
-                  <button
-                    type="button"
+                  <span
+                    role="button"
+                    tabIndex={0}
                     draggable={!pending}
                     onClick={(event) => event.stopPropagation()}
-                    onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = "move"; setDragItem({ type: "module", id: section.id }); }}
+                    onDragStart={(event) => startModuleDrag(event, section.id)}
                     onDragEnd={() => setDragItem(null)}
                     className="ml-3 cursor-grab rounded-xl p-1 text-muted-foreground hover:bg-secondary active:cursor-grabbing"
                     aria-label={`Arrastar módulo ${section.name}`}
                   >
                     <GripVertical className="h-5 w-5" />
-                  </button>
+                  </span>
                 )}
                 <button type="button" onClick={() => toggleModule(section.id)} className="flex min-w-0 flex-1 items-center gap-2 p-4 text-left">
                   <FolderOpen className="h-4 w-4 shrink-0 text-primary" />

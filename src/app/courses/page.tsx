@@ -8,8 +8,9 @@ import { CourseCard } from "@/components/course-card";
 import { CourseFilters } from "@/components/course-filters";
 import { FolderCreateForm } from "@/components/folder-create-form";
 import { buildFolderOptions } from "@/lib/folders";
+import { uniqueSorted } from "@/lib/search-filters";
 
-type SearchParams = Promise<{ search?: string; status?: string; sort?: string; subject?: string | string[]; folder?: string }>;
+type SearchParams = Promise<{ search?: string; semantic?: string; category?: string; tag?: string | string[]; status?: string; sort?: string; folder?: string }>;
 
 export const metadata = { title: "Cursos" };
 
@@ -24,8 +25,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
     orderBy: { name: "asc" },
   });
   const folderOptions = buildFolderOptions(folders);
-  const subjects = [...new Set(allCourses.map((course) => course.subject).filter((subject): subject is string => Boolean(subject)))]
-    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const categories = uniqueSorted(allCourses.map((course) => course.subject));
+  const tags = uniqueSorted(allCourses.flatMap((course) => course.tags));
 
   return (
     <div className="page-shell">
@@ -47,7 +48,18 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         </div>
       </section>
 
-      <CourseFilters search={query.search} status={query.status} sort={query.sort} subjects={subjects} selectedSubjects={query.subjects} showSubjects clearHref="/courses" folderId={query.folderId} />
+      <CourseFilters
+        search={query.search}
+        semantic={query.semantic}
+        category={query.category}
+        tags={tags}
+        selectedTags={query.tags}
+        status={query.status}
+        sort={query.sort}
+        categories={categories}
+        clearHref="/courses"
+        folderId={query.folderId}
+      />
 
       <section className="space-y-3">
         <FolderCreateForm scope="COURSE" folders={folders} />

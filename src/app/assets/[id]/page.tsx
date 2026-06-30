@@ -12,6 +12,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
 
   const asset = await prisma.digitalAsset.findFirst({
     where: { id, userId: user.id },
+    include: { stages: { orderBy: { position: "asc" } } },
   });
   const folders = await prisma.folder.findMany({
     where: { userId: user.id, scope: "DIGITAL_ASSET" },

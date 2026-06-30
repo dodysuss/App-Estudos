@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Copy, Files, Heart, Pin, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, Copy, Files, Heart, Pin, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import {
   deleteDigitalAsset,
   duplicateDigitalAsset,
@@ -35,7 +35,8 @@ export function DigitalAssetCard({ asset }: { asset: DigitalAssetCardData }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
-  const href = `/assets/${asset.id}`;
+  const editorHref = `/assets/${asset.id}`;
+  const publishedHref = `/assets/${asset.id}/published`;
   const coverStyle = asset.coverImage
     ? { backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.08), rgba(15,23,42,.35)), url(${asset.coverImage})` }
     : { background: asset.coverColor || ASSET_COVER_COLORS[0] };
@@ -54,7 +55,7 @@ export function DigitalAssetCard({ asset }: { asset: DigitalAssetCardData }) {
   }
 
   function copyInternalLink() {
-    const url = `${window.location.origin}${href}`;
+    const url = `${window.location.origin}${publishedHref}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
@@ -69,7 +70,7 @@ export function DigitalAssetCard({ asset }: { asset: DigitalAssetCardData }) {
 
   return (
     <Card className={`group overflow-hidden transition hover:-translate-y-1 hover:border-primary/30 ${asset.archived ? "opacity-75" : ""}`}>
-      <Link href={href} className="block h-44 bg-cover bg-center" style={coverStyle} aria-label={`Abrir ativo digital ${asset.title}`}>
+      <Link href={publishedHref} className="block h-44 bg-cover bg-center" style={coverStyle} aria-label={`Abrir página publicada do ativo digital ${asset.title}`}>
         <div className="flex h-full items-start justify-between p-4">
           <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm">{asset.assetType}</span>
           <div className="flex gap-2">
@@ -80,14 +81,12 @@ export function DigitalAssetCard({ asset }: { asset: DigitalAssetCardData }) {
       </Link>
 
       <CardContent className="p-5">
-        <div className="min-h-32">
+        <Link href={publishedHref} className="block min-h-32 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <div className="flex flex-wrap items-center gap-2">
             {asset.category && <span className="pill border-primary/20 bg-primary/10 text-primary">{asset.category}</span>}
             {asset.archived && <span className="pill border-amber-500/20 bg-amber-500/10 text-amber-600">Arquivado</span>}
           </div>
-          <Link href={href} className="mt-3 block">
-            <h3 className="line-clamp-2 text-xl font-bold tracking-tight transition group-hover:text-primary">{asset.title}</h3>
-          </Link>
+          <h3 className="mt-3 line-clamp-2 text-xl font-bold tracking-tight transition group-hover:text-primary">{asset.title}</h3>
           {asset.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{asset.description}</p>}
           {asset.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5">
@@ -96,11 +95,16 @@ export function DigitalAssetCard({ asset }: { asset: DigitalAssetCardData }) {
               ))}
             </div>
           )}
-        </div>
+        </Link>
 
         {error && <p className="mb-3 rounded-xl bg-destructive/10 p-2 text-xs text-destructive">{error}</p>}
 
-        <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-7">
+          <Button type="button" variant="outline" size="icon" title="Editar ativo" asChild>
+            <Link href={editorHref} aria-label={`Editar ativo digital ${asset.title}`}>
+              <Pencil className="h-4 w-4" />
+            </Link>
+          </Button>
           <Button type="button" variant="outline" size="icon" title={asset.pinned ? "Desfixar" : "Fixar no início"} disabled={pending} onClick={() => run(() => toggleDigitalAssetPinned({ assetId: asset.id, value: !asset.pinned }))}>
             <Pin className={`h-4 w-4 ${asset.pinned ? "fill-current text-primary" : ""}`} />
           </Button>

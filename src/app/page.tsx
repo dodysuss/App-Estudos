@@ -9,8 +9,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DashboardStats } from "@/components/dashboard-stats";
 import { CourseCard } from "@/components/course-card";
 import { CourseFilters } from "@/components/course-filters";
+import { uniqueSorted } from "@/lib/search-filters";
 
-type SearchParams = Promise<{ search?: string; status?: string; sort?: string; subject?: string | string[] }>;
+type SearchParams = Promise<{ search?: string; semantic?: string; category?: string; tag?: string | string[]; status?: string; sort?: string }>;
 
 export default async function DashboardPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
@@ -22,8 +23,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
 
   const regularCourses = courses.filter((course) => course.kind === "COURSE");
   const playlists = courses.filter((course) => course.kind === "VIDEO_PLAYLIST");
-  const availableSubjects = [...new Set(regularCourses.map((course) => course.subject).filter((subject): subject is string => Boolean(subject)))]
-    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const availableCategories = uniqueSorted(courses.map((course) => course.subject));
+  const availableTags = uniqueSorted(courses.flatMap((course) => course.tags));
   const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0);
   const completedLessons = courses.reduce((sum, course) => sum + course.completedLessons, 0);
   const progress = calculateProgress(completedLessons, totalLessons);
@@ -174,7 +175,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
               <h2 className="mt-2 text-2xl font-bold tracking-tight">Cursos e playlists</h2>
               <p className="text-sm text-muted-foreground">Busque cursos e playlists em um só lugar.</p>
             </div>
-            <CourseFilters search={query.search} status={query.status} sort={query.sort} subjects={availableSubjects} selectedSubjects={query.subjects} showSubjects itemLabel="item" />
+            <CourseFilters
+              search={query.search}
+              semantic={query.semantic}
+              category={query.category}
+              tags={availableTags}
+              selectedTags={query.tags}
+              status={query.status}
+              sort={query.sort}
+              categories={availableCategories}
+              itemLabel="item"
+            />
             {filtered.length ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.map((course) => <CourseCard key={course.id} course={course} />)}</div>
             ) : (

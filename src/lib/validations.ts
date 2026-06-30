@@ -96,6 +96,22 @@ export const refreshPlaylistSchema = z.object({
   courseId: z.string().cuid(),
 });
 
+export const playlistVideoSchema = z
+  .object({
+    courseId: z.string().cuid(),
+    title: z.string().trim().max(120, "Use no máximo 120 caracteres.").optional(),
+    videoUrl: z.string().trim().min(1, "Cole a URL do vídeo.").max(500, "URL muito longa."),
+  })
+  .superRefine((value, context) => {
+    if (!extractYouTubeVideoId(value.videoUrl)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["videoUrl"],
+        message: "Cole uma URL válida de vídeo do YouTube.",
+      });
+    }
+  });
+
 export const lessonToggleSchema = z.object({
   lessonId: z.string().cuid(),
   courseId: z.string().cuid(),
@@ -264,6 +280,28 @@ export const digitalAssetIdentitySchema = z.object({
 
 export const digitalAssetFlagSchema = digitalAssetIdentitySchema.extend({
   value: z.boolean(),
+});
+
+export const digitalAssetStageCreateSchema = z.object({
+  assetId: z.string().cuid(),
+  title: z.string().trim().min(1, "Informe o nome da etapa.").max(100, "Use no máximo 100 caracteres."),
+});
+
+export const digitalAssetStageUpdateSchema = z.object({
+  assetId: z.string().cuid(),
+  stageId: z.string().cuid(),
+  title: z.string().trim().min(1, "Informe o nome da etapa.").max(100, "Use no máximo 100 caracteres."),
+  content: z.string().max(100_000, "O conteúdo da etapa está muito longo.").optional(),
+});
+
+export const digitalAssetStageIdentitySchema = z.object({
+  assetId: z.string().cuid(),
+  stageId: z.string().cuid(),
+});
+
+export const digitalAssetStageOrderSchema = z.object({
+  assetId: z.string().cuid(),
+  stageIds: z.array(z.string().cuid()).min(1),
 });
 
 export const folderScopeSchema = z.enum(["COURSE", "VIDEO_PLAYLIST", "DIGITAL_ASSET"]);

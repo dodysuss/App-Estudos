@@ -474,6 +474,69 @@
   .asset-checklist input {
     @apply mt-1;
   }
+
+  .asset-data-model {
+    @apply overflow-hidden rounded-[1.5rem] border bg-card p-4 shadow-soft;
+  }
+
+  .asset-data-kicker {
+    @apply mb-4 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary;
+  }
+
+  .asset-data-fields {
+    @apply grid gap-3 md:grid-cols-2;
+  }
+
+  .asset-data-field {
+    @apply rounded-2xl border bg-background/70 p-4;
+  }
+
+  .asset-data-field-full {
+    @apply md:col-span-2;
+  }
+
+  .asset-data-field strong {
+    @apply block text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground;
+  }
+
+  .asset-data-field p,
+  .asset-data-field pre {
+    @apply mt-2 whitespace-pre-wrap text-sm leading-7 text-foreground;
+  }
+
+  .asset-data-field ol {
+    @apply mt-3 list-decimal space-y-2 pl-5;
+  }
+
+  .asset-special-link {
+    @apply mb-4 inline-flex rounded-2xl border bg-primary/10 px-4 py-3 text-base font-bold no-underline transition hover:bg-primary/15;
+  }
+
+  .asset-special-link-list {
+    @apply list-none space-y-2 pl-0;
+  }
+
+  .asset-special-link-list li {
+    @apply rounded-2xl border bg-background/70 p-3;
+  }
+
+  .asset-special-link-list a {
+    @apply font-bold;
+  }
+
+  .asset-special-link-list small {
+    @apply mt-1 block overflow-hidden text-xs text-muted-foreground;
+    max-height: 0;
+    opacity: 0;
+    transition:
+      max-height 180ms ease 2s,
+      opacity 180ms ease 2s;
+  }
+
+  .asset-special-link-list li:hover small {
+    max-height: 4rem;
+    opacity: 1;
+  }
 }
 
 @media print {

@@ -7,7 +7,7 @@ import { normalizeEditorHtml } from "@/lib/rich-html";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ExportPdfButton, PublishedAssetHtml } from "@/components/published-asset-html";
+import { ExportAssetButtons, PublishedAssetHtml } from "@/components/published-asset-html";
 
 export default async function PublishedAssetPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -15,6 +15,7 @@ export default async function PublishedAssetPage({ params }: { params: Promise<{
 
   const asset = await prisma.digitalAsset.findFirst({
     where: { id, userId: user.id },
+    include: { stages: { orderBy: { position: "asc" } } },
   });
 
   if (!asset) notFound();
@@ -63,7 +64,24 @@ export default async function PublishedAssetPage({ params }: { params: Promise<{
                   Editar
                 </Link>
               </Button>
-              <ExportPdfButton />
+              <ExportAssetButtons
+                asset={{
+                  id: asset.id,
+                  title: asset.title,
+                  description: asset.description,
+                  tags: asset.tags,
+                  category: asset.category,
+                  assetType: asset.assetType,
+                  content: normalizeEditorHtml(asset.publishedContent),
+                  publishedAt: asset.publishedAt.toISOString(),
+                  stages: asset.stages.map((stage) => ({
+                    id: stage.id,
+                    title: stage.title,
+                    content: stage.content ? normalizeEditorHtml(stage.content) : null,
+                    position: stage.position,
+                  })),
+                }}
+              />
             </div>
             <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-950">
               Página publicada
@@ -90,6 +108,26 @@ export default async function PublishedAssetPage({ params }: { params: Promise<{
         <div className="mx-auto max-w-4xl rounded-[1.75rem] border bg-card/80 p-5 shadow-soft md:p-10">
           <PublishedAssetHtml html={normalizeEditorHtml(asset.publishedContent)} />
         </div>
+        {asset.stages.length > 0 && (
+          <div className="mx-auto mt-8 max-w-4xl space-y-5">
+            <div>
+              <p className="eyebrow">Etapas</p>
+              <h2 className="mt-1 text-3xl font-bold tracking-tight">Etapas do ativo</h2>
+            </div>
+            {asset.stages.map((stage) => (
+              <section key={stage.id} className="rounded-[1.75rem] border bg-card/80 p-5 shadow-soft md:p-8">
+                <h3 className="text-2xl font-bold tracking-tight">{stage.title}</h3>
+                {stage.content ? (
+                  <div className="mt-5">
+                    <PublishedAssetHtml html={normalizeEditorHtml(stage.content)} />
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">Esta etapa ainda não tem conteúdo.</p>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
       </section>
     </article>
   );

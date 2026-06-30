@@ -8,21 +8,25 @@ import { CourseCard } from "@/components/course-card";
 import { CourseFilters } from "@/components/course-filters";
 import { FolderCreateForm } from "@/components/folder-create-form";
 import { buildFolderOptions } from "@/lib/folders";
+import { uniqueSorted } from "@/lib/search-filters";
 
-type SearchParams = Promise<{ search?: string; status?: string; sort?: string; subject?: string | string[]; folder?: string }>;
+type SearchParams = Promise<{ search?: string; semantic?: string; category?: string; tag?: string | string[]; status?: string; sort?: string; folder?: string }>;
 
 export const metadata = { title: "Playlists de vídeos" };
 
 export default async function PlaylistsPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const query = normalizeCourseQuery(await searchParams);
-  const playlists = filterDecoratedCourses(await getDecoratedCourses(user.id, "VIDEO_PLAYLIST"), query);
+  const allPlaylists = await getDecoratedCourses(user.id, "VIDEO_PLAYLIST");
+  const playlists = filterDecoratedCourses(allPlaylists, query);
   const folders = await prisma.folder.findMany({
     where: { userId: user.id, scope: "VIDEO_PLAYLIST" },
     select: { id: true, name: true, parentId: true },
     orderBy: { name: "asc" },
   });
   const folderOptions = buildFolderOptions(folders);
+  const categories = uniqueSorted(allPlaylists.map((playlist) => playlist.subject));
+  const tags = uniqueSorted(allPlaylists.flatMap((playlist) => playlist.tags));
 
   return (
     <div className="page-shell">
@@ -44,7 +48,19 @@ export default async function PlaylistsPage({ searchParams }: { searchParams: Se
         </div>
       </section>
 
-      <CourseFilters search={query.search} status={query.status} sort={query.sort} itemLabel="playlist" clearHref="/playlists" folderId={query.folderId} />
+      <CourseFilters
+        search={query.search}
+        semantic={query.semantic}
+        category={query.category}
+        tags={tags}
+        selectedTags={query.tags}
+        status={query.status}
+        sort={query.sort}
+        categories={categories}
+        itemLabel="playlist"
+        clearHref="/playlists"
+        folderId={query.folderId}
+      />
 
       <section className="space-y-3">
         <FolderCreateForm scope="VIDEO_PLAYLIST" folders={folders} />

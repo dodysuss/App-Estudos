@@ -1,25 +1,29 @@
 import Link from "next/link";
-import { RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { RotateCcw, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function CourseFilters({
   search,
+  semantic,
+  category,
+  tags = [],
+  selectedTags = [],
   status,
   sort,
-  subjects = [],
-  selectedSubjects = [],
-  showSubjects = false,
+  categories = [],
   itemLabel = "curso",
   clearHref = "/",
   folderId,
 }: {
   search: string;
+  semantic: string;
+  category: string;
+  tags?: string[];
+  selectedTags?: string[];
   status: string;
   sort: string;
-  subjects?: string[];
-  selectedSubjects?: string[];
-  showSubjects?: boolean;
+  categories?: string[];
   itemLabel?: string;
   clearHref?: string;
   folderId?: string;
@@ -33,21 +37,47 @@ export function CourseFilters({
         </span>
         <div>
           <h2 className="text-sm font-semibold">Refinar biblioteca</h2>
-          <p className="text-xs text-muted-foreground">Busque, filtre e ordene sem perder o contexto.</p>
+          <p className="text-xs text-muted-foreground">Busca textual, busca semântica, categoria e tags.</p>
         </div>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[1fr_180px_190px_auto]">
+      <div className="grid gap-3 lg:grid-cols-2">
         <label className="relative">
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             name="search"
             defaultValue={search}
-            placeholder={`Buscar por nome ${itemLabel === "playlist" ? "da" : "do"} ${itemLabel}`}
+            placeholder={`Busca textual por nome, descrição ou conteúdo ${itemLabel === "playlist" ? "da" : "do"} ${itemLabel}`}
             className="pl-10"
           />
         </label>
 
+        <label className="relative">
+          <Sparkles className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            name="semantic"
+            defaultValue={semantic}
+            placeholder="Busca semântica: objetivo, ideia, problema ou tema relacionado..."
+            className="pl-10"
+          />
+        </label>
+
+        <select name="category" defaultValue={category} className="h-11 rounded-xl border bg-background/80 px-3 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring">
+          <option value="">Todas as categorias</option>
+          {categories.map((item) => (
+            <option key={item} value={item}>{item}</option>
+          ))}
+        </select>
+
+        <select name="tag" defaultValue={selectedTags[0] ?? ""} className="h-11 rounded-xl border bg-background/80 px-3 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring">
+          <option value="">Todas as tags</option>
+          {tags.map((tag) => (
+            <option key={tag} value={tag}>#{tag}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-[180px_190px_auto]">
         <select name="status" defaultValue={status} className="h-11 rounded-xl border bg-background/80 px-3 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring">
           <option value="all">Todos</option>
           <option value="not-started">Não iniciados</option>
@@ -72,31 +102,6 @@ export function CourseFilters({
           </Button>
         </div>
       </div>
-
-      {showSubjects && (
-        <fieldset className="mt-4 border-t pt-4">
-          <legend className="mb-3 text-sm font-semibold">
-            Assuntos <span className="font-normal text-muted-foreground">(múltipla seleção)</span>
-          </legend>
-          {subjects.length ? (
-            <div className="flex flex-wrap gap-2">
-              {subjects.map((subject) => (
-                <label
-                  key={subject}
-                  className="flex cursor-pointer items-center gap-2 rounded-full border bg-background/70 px-3 py-1.5 text-sm transition hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary"
-                >
-                  <input type="checkbox" name="subject" value={subject} defaultChecked={selectedSubjects.includes(subject)} className="h-3.5 w-3.5 accent-primary" />
-                  {subject}
-                </label>
-              ))}
-            </div>
-          ) : (
-            <p className="rounded-2xl border border-dashed bg-background/50 p-4 text-sm text-muted-foreground">
-              Cadastre o assunto de um curso para habilitar este filtro.
-            </p>
-          )}
-        </fieldset>
-      )}
     </form>
   );
 }

@@ -175,6 +175,7 @@ model DigitalAsset {
   pinned           Boolean   @default(false)
   favorite         Boolean   @default(false)
   archived         Boolean   @default(false)
+  stages           DigitalAssetStage[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -183,4 +184,18 @@ model DigitalAsset {
   @@index([folderId])
   @@index([userId, category])
   @@index([userId, assetType])
+}
+
+model DigitalAssetStage {
+  id        String       @id @default(cuid())
+  assetId   String
+  asset     DigitalAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  title     String
+  content   String?
+  position  Int
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([assetId, position])
+  @@index([assetId])
 }

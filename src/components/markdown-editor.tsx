@@ -1,7 +1,25 @@
 "use client";
 
 import { useRef } from "react";
-import { Bold, Code2, Heading2, Italic, Link2, List, ListOrdered, Loader2, Quote, Send } from "lucide-react";
+import {
+  Bold,
+  CheckSquare2,
+  Code2,
+  Heading1,
+  Heading2,
+  Heading3,
+  Image,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Loader2,
+  Minus,
+  Quote,
+  Send,
+  Strikethrough,
+  Table2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -16,7 +34,15 @@ type MarkdownEditorProps = {
   textareaClassName?: string;
 };
 
-export function MarkdownEditor({ value, onChange, placeholder, onPublish, publishing = false, publishDisabled = false, textareaClassName }: MarkdownEditorProps) {
+export function MarkdownEditor({
+  value,
+  onChange,
+  placeholder,
+  onPublish,
+  publishing = false,
+  publishDisabled = false,
+  textareaClassName,
+}: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function insert(before: string, after = "", fallback = "texto") {
@@ -33,15 +59,39 @@ export function MarkdownEditor({ value, onChange, placeholder, onPublish, publis
     });
   }
 
+  function insertBlock(markdown: string, cursorOffset = markdown.length) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const prefix = start > 0 && value[start - 1] !== "\n" ? "\n" : "";
+    const suffix = end < value.length && value[end] !== "\n" ? "\n" : "";
+    const next = `${value.slice(0, start)}${prefix}${markdown}${suffix}${value.slice(end)}`;
+    const cursor = start + prefix.length + cursorOffset;
+    onChange(next);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  }
+
   const tools = [
+    { label: "Título 1", icon: Heading1, action: () => insert("# ", "", "Título principal") },
+    { label: "Título 2", icon: Heading2, action: () => insert("## ", "", "Título") },
+    { label: "Título 3", icon: Heading3, action: () => insert("### ", "", "Subtítulo") },
     { label: "Negrito", icon: Bold, action: () => insert("**", "**") },
     { label: "Itálico", icon: Italic, action: () => insert("_", "_") },
-    { label: "Título", icon: Heading2, action: () => insert("## ", "", "Título") },
+    { label: "Riscado", icon: Strikethrough, action: () => insert("~~", "~~") },
     { label: "Lista", icon: List, action: () => insert("- ", "", "Item") },
     { label: "Lista numerada", icon: ListOrdered, action: () => insert("1. ", "", "Item") },
+    { label: "Checklist", icon: CheckSquare2, action: () => insertBlock("- [ ] Item da tarefa\n- [ ] Outro item\n", 6) },
     { label: "Citação", icon: Quote, action: () => insert("> ", "", "Citação") },
-    { label: "Código", icon: Code2, action: () => insert("`", "`", "código") },
+    { label: "Código inline", icon: Code2, action: () => insert("`", "`", "código") },
+    { label: "Bloco de código", icon: Code2, action: () => insertBlock("```ts\n// cole seu código aqui\n```\n", 6) },
     { label: "Link", icon: Link2, action: () => insert("[", "](https://)", "título") },
+    { label: "Imagem", icon: Image, action: () => insert("![", "](https://)", "descrição") },
+    { label: "Tabela", icon: Table2, action: () => insertBlock("| Coluna 1 | Coluna 2 |\n| --- | --- |\n| Conteúdo | Conteúdo |\n", 2) },
+    { label: "Divisor", icon: Minus, action: () => insertBlock("\n---\n") },
   ];
 
   return (

@@ -55,7 +55,14 @@ type InsertKind =
   | "divider"
   | "accordion"
   | "nested-card"
-  | "internal-link";
+  | "internal-link"
+  | "prompt-model"
+  | "code-model"
+  | "link-model"
+  | "link-list"
+  | "hack-model"
+  | "digital-asset-model"
+  | "skill-model";
 
 type RichTextEditorProps = {
   value: string;
@@ -64,6 +71,33 @@ type RichTextEditorProps = {
   minHeightClassName?: string;
 };
 
+type SpecialFieldKey =
+  | "aiModel"
+  | "objective"
+  | "variables"
+  | "expectedResult"
+  | "example"
+  | "language"
+  | "usage"
+  | "dependencies"
+  | "command"
+  | "codeBlocks"
+  | "linkText"
+  | "source"
+  | "observations"
+  | "listName"
+  | "urls"
+  | "problem"
+  | "steps"
+  | "tools"
+  | "difficulty"
+  | "assetType"
+  | "file"
+  | "license"
+  | "origin"
+  | "skillType"
+  | "instructions";
+
 type InsertDraft = {
   title?: string;
   body?: string;
@@ -71,6 +105,7 @@ type InsertDraft = {
   url?: string;
   rows?: string;
   cols?: string;
+  fields?: Partial<Record<SpecialFieldKey, string>>;
 };
 
 type ModalState = {
@@ -109,6 +144,13 @@ const INSERT_OPTIONS: Array<{ kind: InsertKind; label: string; icon: typeof Chec
   { kind: "checklist", label: "Checklist", icon: CheckSquare },
   { kind: "accordion", label: "Lista recolhível", icon: ChevronDown },
   { kind: "code", label: "Código", icon: Code2 },
+  { kind: "prompt-model", label: "Prompt", icon: Type },
+  { kind: "code-model", label: "Código estruturado", icon: Code2 },
+  { kind: "link-model", label: "Link estruturado", icon: LinkIcon },
+  { kind: "link-list", label: "Lista de links", icon: List },
+  { kind: "hack-model", label: "Hack", icon: Highlighter },
+  { kind: "digital-asset-model", label: "Ativo digital", icon: Layers3 },
+  { kind: "skill-model", label: "Skill", icon: FileText },
   { kind: "youtube", label: "YouTube", icon: Video },
   { kind: "embed", label: "Página externa", icon: Globe2 },
   { kind: "attachment", label: "Anexo", icon: Paperclip },
@@ -122,6 +164,54 @@ const INSERT_OPTIONS: Array<{ kind: InsertKind; label: string; icon: typeof Chec
   { kind: "image", label: "Imagem", icon: ImageIcon },
   { kind: "divider", label: "Divisor", icon: SeparatorHorizontal },
 ];
+
+const SPECIAL_FIELD_LABELS: Record<SpecialFieldKey, { label: string; placeholder?: string; multiline?: boolean; full?: boolean }> = {
+  aiModel: { label: "Modelo de IA recomendado", placeholder: "Ex.: GPT-5, Claude, Gemini" },
+  objective: { label: "Objetivo do prompt", multiline: true },
+  variables: { label: "Variáveis de entrada", placeholder: "Ex.: {{tema}}, {{publico}}, {{tom}}", multiline: true },
+  expectedResult: { label: "Resultado esperado", multiline: true },
+  example: { label: "Exemplo de uso", multiline: true },
+  language: { label: "Linguagem", placeholder: "Ex.: TypeScript, Python, SQL" },
+  usage: { label: "Descrição do uso", multiline: true },
+  dependencies: { label: "Dependências", multiline: true },
+  command: { label: "Comando de execução", placeholder: "Ex.: npm run dev" },
+  codeBlocks: { label: "Blocos de código copiáveis", multiline: true, full: true },
+  linkText: { label: "Texto do link", placeholder: "Texto visível" },
+  source: { label: "Fonte" },
+  observations: { label: "Observações", multiline: true },
+  listName: { label: "Nome da lista" },
+  urls: { label: "URLs", placeholder: "Uma URL por linha. Opcional: Texto | URL | Observação", multiline: true, full: true },
+  problem: { label: "Problema resolvido", multiline: true },
+  steps: { label: "Passo a passo", placeholder: "Um passo por linha", multiline: true, full: true },
+  tools: { label: "Ferramentas necessárias", multiline: true },
+  difficulty: { label: "Nível de dificuldade", placeholder: "Ex.: Fácil, Médio, Avançado" },
+  assetType: { label: "Tipo de ativo" },
+  file: { label: "Arquivo anexado", placeholder: "URL ou referência do arquivo" },
+  license: { label: "Licença" },
+  origin: { label: "Origem" },
+  skillType: { label: "Tipo" },
+  instructions: { label: "Instruções", multiline: true, full: true },
+};
+
+const SPECIAL_MODEL_FIELDS: Partial<Record<InsertKind, SpecialFieldKey[]>> = {
+  "prompt-model": ["aiModel", "objective", "variables", "expectedResult", "example"],
+  "code-model": ["language", "usage", "dependencies", "command", "codeBlocks"],
+  "link-model": ["linkText", "source", "observations"],
+  "link-list": ["listName", "urls", "observations"],
+  "hack-model": ["problem", "steps", "observations", "tools", "difficulty"],
+  "digital-asset-model": ["assetType", "file", "license", "origin", "observations"],
+  "skill-model": ["skillType", "file", "instructions", "origin", "observations"],
+};
+
+const SPECIAL_MODEL_TITLES: Partial<Record<InsertKind, string>> = {
+  "prompt-model": "Prompt",
+  "code-model": "Código",
+  "link-model": "Link",
+  "link-list": "Lista de links",
+  "hack-model": "Hack",
+  "digital-asset-model": "Ativo digital",
+  "skill-model": "Skill",
+};
 
 function escapeHtml(value: string) {
   return value
@@ -198,6 +288,40 @@ function readBlockDraft(block: HTMLElement, kind: InsertKind): InsertDraft {
     block.querySelector("img")?.getAttribute("src") ??
     "";
 
+  const fields = Object.fromEntries(
+    Array.from(block.querySelectorAll<HTMLElement>("[data-special-field]"))
+      .map((field) => [field.dataset.specialField ?? "", field.textContent?.trim() ?? ""])
+      .filter(([key]) => Boolean(key)),
+  ) as Partial<Record<SpecialFieldKey, string>>;
+
+  if (kind === "link-list") {
+    fields.urls = Array.from(block.querySelectorAll("li"))
+      .map((item) => {
+        const link = item.querySelector("a");
+        const text = link?.textContent?.trim() ?? "";
+        const href = link?.getAttribute("href") ?? "";
+        const note = item.querySelector("small")?.textContent?.trim() ?? link?.getAttribute("title") ?? "";
+        return [text, href, note].filter(Boolean).join(" | ");
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (kind === "hack-model") {
+    fields.steps = Array.from(block.querySelectorAll<HTMLElement>("[data-special-field='steps']"))
+      .map((item) => item.textContent?.trim() ?? "")
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (kind === "code-model") {
+    fields.codeBlocks = block.querySelector("code")?.textContent?.trim() ?? fields.codeBlocks ?? "";
+  }
+
+  if (SPECIAL_MODEL_FIELDS[kind]) {
+    return { title, body, caption, url, fields };
+  }
+
   if (kind === "checklist") {
     const checklistBody = Array.from(block.querySelectorAll("li"))
       .map((item) => {
@@ -245,6 +369,7 @@ function InsertContentModal({
   const [url, setUrl] = useState("");
   const [rows, setRows] = useState("3");
   const [cols, setCols] = useState("3");
+  const [fieldValues, setFieldValues] = useState<Partial<Record<SpecialFieldKey, string>>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -255,6 +380,7 @@ function InsertContentModal({
     setUrl(draft?.url ?? "");
     setRows(draft?.rows ?? "3");
     setCols(draft?.cols ?? "3");
+    setFieldValues(draft?.fields ?? {});
   }, [draft, kind, open]);
 
   if (!open) return null;
@@ -265,6 +391,62 @@ function InsertContentModal({
     const safeCaption = escapeHtml(caption.trim());
     const safeUrl = escapeHtml(normalizeUrl(url));
     const safeLabel = safeTitle || "Novo conteúdo";
+
+    const specialFields = SPECIAL_MODEL_FIELDS[selectedKind] ?? [];
+    const specialTitle = SPECIAL_MODEL_TITLES[selectedKind] ?? "Modelo de dados";
+    const fieldValue = (key: SpecialFieldKey) => escapeHtml((fieldValues[key] ?? "").trim());
+    const fieldRows = (keys: SpecialFieldKey[]) =>
+      keys
+        .filter((key) => fieldValue(key) || key === "steps" || key === "codeBlocks" || key === "urls" || key === "instructions")
+        .map((key) => {
+          const label = SPECIAL_FIELD_LABELS[key].label;
+          const value = fieldValue(key);
+          if (key === "steps") {
+            const items = (fieldValues.steps ?? "")
+              .split(/\r?\n/)
+              .map((step) => step.trim())
+              .filter(Boolean)
+              .map((step) => `<li data-special-field="steps">${escapeHtml(step)}</li>`)
+              .join("");
+            return `<div class="asset-data-field asset-data-field-full"><strong>${label}</strong><ol>${items || "<li data-special-field=\"steps\">Adicionar passo</li>"}</ol></div>`;
+          }
+          if (key === "instructions") {
+            return `<div class="asset-data-field asset-data-field-full"><strong>${label}</strong><pre data-special-field="${key}">${value || ""}</pre></div>`;
+          }
+          return `<div class="asset-data-field ${SPECIAL_FIELD_LABELS[key].full ? "asset-data-field-full" : ""}"><strong>${label}</strong><p data-special-field="${key}">${value || ""}</p></div>`;
+        })
+        .join("");
+
+    if (specialFields.length) {
+      if (selectedKind === "code-model") {
+        const code = fieldValue("codeBlocks") || safeBody || "// cole seu código aqui";
+        return `<div class="asset-insert-block asset-data-model asset-code-model" data-kind="code-model"><div class="asset-block-actions" contenteditable="false"><strong data-block-title>${safeTitle || "Código"}</strong><button type="button" data-edit-block>Editar</button></div>${safeCaption ? `<p class="asset-block-caption" data-block-caption>${safeCaption}</p>` : ""}<div class="asset-data-kicker">${specialTitle}</div><div class="asset-data-fields">${fieldRows(["language", "usage", "dependencies", "command"])}</div><div class="asset-code-block"><div class="asset-code-header" contenteditable="false"><span>${fieldValue("language") || "Código"}</span><div><button type="button" data-copy-code>Copiar</button></div></div><pre><code data-special-field="codeBlocks">${code}</code></pre></div></div><p><br></p>`;
+      }
+
+      if (selectedKind === "link-model") {
+        const href = safeUrl || "#";
+        const text = fieldValue("linkText") || safeLabel || href;
+        return `<div class="asset-insert-block asset-data-model asset-link-model" data-kind="link-model" data-url="${href}"><div class="asset-block-actions" contenteditable="false"><strong data-block-title>${safeTitle || "Link"}</strong><button type="button" data-edit-block>Editar</button></div>${safeCaption ? `<p class="asset-block-caption" data-block-caption>${safeCaption}</p>` : ""}<a class="asset-special-link" href="${href}" target="_blank" rel="noopener noreferrer">${text}</a><div class="asset-data-fields">${fieldRows(["source", "observations"])}</div></div><p><br></p>`;
+      }
+
+      if (selectedKind === "link-list") {
+        const links = (fieldValues.urls ?? "")
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => {
+            const [rawText, rawUrl, rawNote] = line.includes("|") ? line.split("|").map((part) => part.trim()) : [line, line, ""];
+            const href = escapeHtml(normalizeUrl(rawUrl || rawText));
+            const text = escapeHtml(rawText || href);
+            const note = escapeHtml(rawNote || fieldValues.observations || "");
+            return `<li><a href="${href || "#"}" target="_blank" rel="noopener noreferrer" title="${note}">${text}</a>${note ? `<small data-special-field="observations">${note}</small>` : ""}</li>`;
+          })
+          .join("");
+        return `<div class="asset-insert-block asset-data-model asset-link-list-model" data-kind="link-list"><div class="asset-block-actions" contenteditable="false"><strong data-block-title>${safeTitle || fieldValue("listName") || "Lista de links"}</strong><button type="button" data-edit-block>Editar</button></div>${safeCaption ? `<p class="asset-block-caption" data-block-caption>${safeCaption}</p>` : ""}<p class="asset-data-kicker" data-special-field="listName">${fieldValue("listName") || "Lista de links"}</p><ul class="asset-special-link-list" data-special-field="urls">${links || "<li>Adicione URLs no editor do bloco</li>"}</ul></div><p><br></p>`;
+      }
+
+      return `<div class="asset-insert-block asset-data-model" data-kind="${selectedKind}"><div class="asset-block-actions" contenteditable="false"><strong data-block-title>${safeTitle || specialTitle}</strong><button type="button" data-edit-block>Editar</button></div>${safeCaption ? `<p class="asset-block-caption" data-block-caption>${safeCaption}</p>` : ""}<div class="asset-data-kicker">${specialTitle}</div><div class="asset-data-fields">${fieldRows(specialFields)}</div></div><p><br></p>`;
+    }
 
     if (selectedKind === "checklist") {
       const items = (body.trim() || "Tarefa 1 | detalhe opcional\nTarefa 2 | detalhe opcional")
@@ -348,12 +530,17 @@ function InsertContentModal({
     onClose();
   }
 
-  const needsUrl = ["link", "internal-link", "document", "image", "youtube", "embed", "attachment"].includes(selectedKind);
+  const specialFieldsForSelected = SPECIAL_MODEL_FIELDS[selectedKind] ?? [];
+  const needsUrl = ["link", "internal-link", "document", "image", "youtube", "embed", "attachment", "link-model"].includes(selectedKind);
   const needsBody = ["checklist", "accordion", "nested-card", "code", "secret", "callout", "attachment"].includes(selectedKind);
+
+  function updateSpecialField(key: SpecialFieldKey, value: string) {
+    setFieldValues((current) => ({ ...current, [key]: value }));
+  }
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-[2rem] border bg-card p-5 shadow-2xl">
+      <div className={`max-h-[90vh] w-full overflow-auto rounded-[2rem] border bg-card p-5 shadow-2xl ${specialFieldsForSelected.length ? "max-w-5xl" : "max-w-3xl"}`}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow">{mode === "edit" ? "Editar conteúdo" : "Inserção rápida"}</p>
@@ -415,6 +602,42 @@ function InsertContentModal({
                       : "https://..."
                 }
               />
+            </div>
+          )}
+
+          {specialFieldsForSelected.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {specialFieldsForSelected.map((fieldKey) => {
+                const field = SPECIAL_FIELD_LABELS[fieldKey];
+                const id = `special-${fieldKey}`;
+                const value = fieldValues[fieldKey] ?? "";
+                const isStepField = fieldKey === "steps";
+                return (
+                  <div key={fieldKey} className={`space-y-2 ${field.full ? "sm:col-span-2" : ""}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor={id} className="text-sm font-medium">
+                        {field.label} <span className="text-muted-foreground">(opcional)</span>
+                      </label>
+                      {isStepField && (
+                        <Button type="button" variant="outline" size="sm" onClick={() => updateSpecialField(fieldKey, `${value}${value ? "\n" : ""}Novo passo`)}>
+                          Adicionar passo
+                        </Button>
+                      )}
+                    </div>
+                    {field.multiline ? (
+                      <Textarea
+                        id={id}
+                        value={value}
+                        onChange={(event) => updateSpecialField(fieldKey, event.target.value)}
+                        className={fieldKey === "instructions" ? "min-h-[45vh]" : "min-h-28"}
+                        placeholder={field.placeholder}
+                      />
+                    ) : (
+                      <Input id={id} value={value} onChange={(event) => updateSpecialField(fieldKey, event.target.value)} placeholder={field.placeholder} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 

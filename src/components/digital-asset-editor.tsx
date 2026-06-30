@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { FolderSelect } from "@/components/folder-select";
+import { DigitalAssetStages } from "@/components/digital-asset-stages";
 import type { FolderOption } from "@/lib/folders";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -28,6 +29,12 @@ type DigitalAssetEditorData = {
   coverImage: string | null;
   coverColor: string | null;
   folderId: string | null;
+  stages: Array<{
+    id: string;
+    title: string;
+    content: string | null;
+    position: number;
+  }>;
 };
 
 export function DigitalAssetEditor({ asset, folders = [] }: { asset: DigitalAssetEditorData; folders?: FolderOption[] }) {
@@ -233,6 +240,16 @@ export function DigitalAssetEditor({ asset, folders = [] }: { asset: DigitalAsse
           </div>
         </div>
       </section>
+
+      <DigitalAssetStages
+        assetId={asset.id}
+        initialStages={asset.stages.map((stage) => ({
+          id: stage.id,
+          title: stage.title,
+          content: stage.content,
+          position: stage.position,
+        }))}
+      />
 
       <section className="rounded-[2rem] border bg-card/80 p-3 shadow-soft md:p-4">
         <div className="mb-3 px-1">

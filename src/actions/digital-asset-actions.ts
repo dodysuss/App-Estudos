@@ -6,7 +6,16 @@ import { requireUser } from "@/lib/auth";
 import { ASSET_COVER_COLORS, DEFAULT_ASSET_TYPE, isDigitalAssetType } from "@/lib/digital-assets";
 import { prisma } from "@/lib/prisma";
 import { sanitizeRichHtml } from "@/lib/rich-html";
-import { digitalAssetFlagSchema, digitalAssetIdentitySchema, digitalAssetSchema, digitalAssetUpdateSchema } from "@/lib/validations";
+import {
+  digitalAssetFlagSchema,
+  digitalAssetIdentitySchema,
+  digitalAssetSchema,
+  digitalAssetStageCreateSchema,
+  digitalAssetStageIdentitySchema,
+  digitalAssetStageOrderSchema,
+  digitalAssetStageUpdateSchema,
+  digitalAssetUpdateSchema,
+} from "@/lib/validations";
 
 export type DigitalAssetFormValues = {
   title: string;
@@ -27,6 +36,10 @@ export type DigitalAssetFormState = {
 };
 
 export type DigitalAssetMutationResult =
+  | { success: true; id?: string }
+  | { success: false; error: string };
+
+export type DigitalAssetStageMutationResult =
   | { success: true; id?: string }
   | { success: false; error: string };
 
@@ -220,6 +233,7 @@ export async function duplicateDigitalAsset(input: unknown): Promise<DigitalAsse
   try {
     const asset = await prisma.digitalAsset.findFirst({
       where: { id: parsed.data.assetId, userId: user.id },
+      include: { stages: { orderBy: { position: "asc" } } },
     });
     if (!asset) return { success: false, error: "Ativo digital não encontrado." };
 
@@ -235,6 +249,13 @@ export async function duplicateDigitalAsset(input: unknown): Promise<DigitalAsse
         coverImage: asset.coverImage,
         coverColor: asset.coverColor,
         favorite: asset.favorite,
+        stages: {
+          create: asset.stages.map((stage) => ({
+            title: stage.title,
+            content: stage.content,
+            position: stage.position,
+          })),
+        },
       },
       select: { id: true },
     });
@@ -262,5 +283,127 @@ export async function deleteDigitalAsset(input: unknown): Promise<DigitalAssetMu
   } catch (error) {
     console.error("Erro ao excluir ativo digital", error);
     return { success: false, error: "Não foi possível excluir o ativo digital." };
+  }
+}
+
+export async function createDigitalAssetStage(input: unknown): Promise<DigitalAssetStageMutationResult> {
+  const user = await requireUser();
+  const parsed = digitalAssetStageCreateSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Etapa inválida." };
+
+  try {
+    const asset = await prisma.digitalAsset.findFirst({
+      where: { id: parsed.data.assetId, userId: user.id },
+      select: { id: true },
+    });
+    if (!asset) return { success: false, error: "Ativo digital não encontrado." };
+
+    const stage = await prisma.$transaction(async (transaction) => {
+      const lastStage = await transaction.digitalAssetStage.findFirst({
+        where: { assetId: asset.id },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+
+      return transaction.digitalAssetStage.create({
+        data: {
+          assetId: asset.id,
+          title: parsed.data.title,
+          position: (lastStage?.position ?? 0) + 1,
+        },
+        select: { id: true },
+      });
+    });
+
+    revalidateDigitalAssets(asset.id);
+    return { success: true, id: stage.id };
+  } catch (error) {
+    console.error("Erro ao criar etapa do ativo digital", error);
+    return { success: false, error: "Não foi possível criar a etapa." };
+  }
+}
+
+export async function updateDigitalAssetStage(input: unknown): Promise<DigitalAssetStageMutationResult> {
+  const user = await requireUser();
+  const parsed = digitalAssetStageUpdateSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Etapa inválida." };
+
+  try {
+    const content = sanitizeRichHtml(parsed.data.content || "");
+    const updated = await prisma.digitalAssetStage.updateMany({
+      where: {
+        id: parsed.data.stageId,
+        assetId: parsed.data.assetId,
+        asset: { is: { userId: user.id } },
+      },
+      data: {
+        title: parsed.data.title,
+        content: content || null,
+      },
+    });
+    if (updated.count === 0) return { success: false, error: "Etapa não encontrada." };
+    revalidateDigitalAssets(parsed.data.assetId);
+    return { success: true, id: parsed.data.stageId };
+  } catch (error) {
+    console.error("Erro ao salvar etapa do ativo digital", error);
+    return { success: false, error: "Não foi possível salvar a etapa." };
+  }
+}
+
+export async function deleteDigitalAssetStage(input: unknown): Promise<DigitalAssetStageMutationResult> {
+  const user = await requireUser();
+  const parsed = digitalAssetStageIdentitySchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Etapa inválida." };
+
+  try {
+    const deleted = await prisma.digitalAssetStage.deleteMany({
+      where: {
+        id: parsed.data.stageId,
+        assetId: parsed.data.assetId,
+        asset: { is: { userId: user.id } },
+      },
+    });
+    if (deleted.count === 0) return { success: false, error: "Etapa não encontrada." };
+    revalidateDigitalAssets(parsed.data.assetId);
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao apagar etapa do ativo digital", error);
+    return { success: false, error: "Não foi possível apagar a etapa." };
+  }
+}
+
+export async function reorderDigitalAssetStages(input: unknown): Promise<DigitalAssetStageMutationResult> {
+  const user = await requireUser();
+  const parsed = digitalAssetStageOrderSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Ordem das etapas inválida." };
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const stageCount = await transaction.digitalAssetStage.count({
+        where: { assetId: parsed.data.assetId, asset: { is: { userId: user.id } } },
+      });
+      if (stageCount !== parsed.data.stageIds.length) throw new Error("STAGE_SET_MISMATCH");
+
+      for (const [index, stageId] of parsed.data.stageIds.entries()) {
+        const updated = await transaction.digitalAssetStage.updateMany({
+          where: { id: stageId, assetId: parsed.data.assetId, asset: { is: { userId: user.id } } },
+          data: { position: -(index + 1) },
+        });
+        if (updated.count !== 1) throw new Error("STAGE_NOT_FOUND");
+      }
+
+      for (const [index, stageId] of parsed.data.stageIds.entries()) {
+        await transaction.digitalAssetStage.update({
+          where: { id: stageId },
+          data: { position: index + 1 },
+        });
+      }
+    });
+
+    revalidateDigitalAssets(parsed.data.assetId);
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao reordenar etapas do ativo digital", error);
+    return { success: false, error: "Não foi possível salvar a ordem das etapas." };
   }
 }

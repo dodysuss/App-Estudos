@@ -6,10 +6,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { readCourseFormValues, type CourseFormValues } from "@/lib/course-form-values";
-import { courseDetailsSchema, courseIdentitySchema, courseSchema, refreshPlaylistSchema } from "@/lib/validations";
+import { courseDetailsSchema, courseIdentitySchema, courseSchema, playlistVideoSchema, refreshPlaylistSchema } from "@/lib/validations";
 import { importYouTubePlaylistVideos } from "@/lib/youtube-playlist";
 import { requireUser } from "@/lib/auth";
-import { extractYouTubePlaylistId } from "@/lib/youtube";
+import { extractYouTubePlaylistId, extractYouTubeVideoId } from "@/lib/youtube";
 
 export type CourseFormState = {
   message?: string;
@@ -21,6 +21,10 @@ export type CourseMutationResult = { success: true } | { success: false; error: 
 
 export type RefreshPlaylistResult =
   | { success: true; added: number; total: number }
+  | { success: false; error: string };
+
+export type AddPlaylistVideoResult =
+  | { success: true; lessonId: string; total: number }
   | { success: false; error: string };
 
 function revalidateCollection(courseId?: string) {
@@ -282,5 +286,83 @@ export async function refreshPlaylistVideos(input: unknown): Promise<RefreshPlay
     console.error("Erro ao atualizar playlist", error);
     const message = error instanceof Error ? error.message : "Não foi possível atualizar a playlist.";
     return { success: false, error: message };
+  }
+}
+
+export async function addPlaylistVideo(input: unknown): Promise<AddPlaylistVideoResult> {
+  const user = await requireUser();
+  const parsed = playlistVideoSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Vídeo inválido." };
+  }
+
+  const videoId = extractYouTubeVideoId(parsed.data.videoUrl);
+  if (!videoId) return { success: false, error: "Cole uma URL válida de vídeo do YouTube." };
+
+  try {
+    const playlist = await prisma.course.findFirst({
+      where: { id: parsed.data.courseId, kind: "VIDEO_PLAYLIST", userId: user.id },
+      select: { id: true },
+    });
+    if (!playlist) return { success: false, error: "Playlist não encontrada." };
+
+    const duplicate = await prisma.studyNote.findFirst({
+      where: {
+        courseId: playlist.id,
+        videoId,
+        course: { is: { userId: user.id, kind: "VIDEO_PLAYLIST" } },
+      },
+      select: { id: true },
+    });
+    if (duplicate) return { success: false, error: "Este vídeo já está nesta playlist." };
+
+    const result = await prisma.$transaction(async (transaction) => {
+      const lastLesson = await transaction.lesson.findFirst({
+        where: { courseId: playlist.id },
+        orderBy: [{ lessonNumber: "desc" }],
+        select: { lessonNumber: true },
+      });
+      const lastPosition = await transaction.lesson.findFirst({
+        where: { courseId: playlist.id },
+        orderBy: [{ position: "desc" }],
+        select: { position: true },
+      });
+
+      const nextLessonNumber = (lastLesson?.lessonNumber ?? 0) + 1;
+      const nextPosition = (lastPosition?.position ?? 0) + 1;
+      const title = parsed.data.title?.trim() || `Vídeo ${nextLessonNumber}`;
+
+      const lesson = await transaction.lesson.create({
+        data: {
+          courseId: playlist.id,
+          lessonNumber: nextLessonNumber,
+          position: nextPosition,
+          title,
+        },
+      });
+
+      await transaction.studyNote.create({
+        data: {
+          courseId: playlist.id,
+          lessonId: lesson.id,
+          videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          videoId,
+        },
+      });
+
+      const total = await transaction.lesson.count({ where: { courseId: playlist.id } });
+      await transaction.course.update({
+        where: { id: playlist.id },
+        data: { totalLessons: total },
+      });
+
+      return { lessonId: lesson.id, total };
+    });
+
+    revalidateCollection(playlist.id);
+    return { success: true, lessonId: result.lessonId, total: result.total };
+  } catch (error) {
+    console.error("Erro ao adicionar vídeo manual", error);
+    return { success: false, error: "Não foi possível adicionar o vídeo." };
   }
 }

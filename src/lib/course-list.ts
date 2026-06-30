@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { calculateProgress, getNextLesson, getProgressStatus } from "@/lib/progress";
+import { matchesStandardFilters, normalizeStandardSearchQuery } from "@/lib/search-filters";
 
 export type CourseKind = "COURSE" | "VIDEO_PLAYLIST";
 
@@ -50,22 +51,26 @@ export async function getDecoratedCourses(userId: string, kind?: CourseKind): Pr
 
 export function filterDecoratedCourses(
   courses: DecoratedCourse[],
-  query: { search: string; status: string; sort: string; subjects: string[]; folderId?: string },
+  query: { search: string; semantic: string; category: string; tags: string[]; status: string; sort: string; folderId?: string },
 ) {
-  const search = query.search.toLocaleLowerCase("pt-BR");
   return [...courses]
-    .filter((course) => {
-      if (!search) return true;
-      return [
-        course.name,
-        course.description ?? "",
-        course.subject ?? "",
-        ...course.tags,
-      ].some((value) => value.toLocaleLowerCase("pt-BR").includes(search));
-    })
+    .filter((course) =>
+      matchesStandardFilters(
+        {
+          text: [
+            course.name,
+            course.description ?? "",
+            course.subject ?? "",
+            ...course.tags,
+          ],
+          category: course.subject,
+          tags: course.tags,
+        },
+        query,
+      ),
+    )
     .filter((course) => !query.folderId || course.folderId === query.folderId)
     .filter((course) => query.status === "all" || course.status === query.status)
-    .filter((course) => query.subjects.length === 0 || (course.subject && query.subjects.includes(course.subject)))
     .sort((a, b) => {
       if (query.sort === "name") return a.name.localeCompare(b.name, "pt-BR");
       if (query.sort === "progress-desc") return b.progress - a.progress;
@@ -74,13 +79,11 @@ export function filterDecoratedCourses(
     });
 }
 
-export function normalizeCourseQuery(query: { search?: string; status?: string; sort?: string; subject?: string | string[]; folder?: string }) {
-  const subjects = (Array.isArray(query.subject) ? query.subject : query.subject ? [query.subject] : []).map((subject) => subject.trim()).filter(Boolean);
+export function normalizeCourseQuery(query: { search?: string; semantic?: string; category?: string; tag?: string | string[]; status?: string; sort?: string; folder?: string }) {
   return {
-    search: query.search?.trim() ?? "",
+    ...normalizeStandardSearchQuery(query),
     status: ["not-started", "in-progress", "completed"].includes(query.status ?? "") ? query.status! : "all",
     sort: ["name", "progress-desc", "progress-asc"].includes(query.sort ?? "") ? query.sort! : "created",
-    subjects,
     folderId: query.folder?.trim() || undefined,
   };
 }
