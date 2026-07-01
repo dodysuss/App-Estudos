@@ -6,6 +6,7 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
 
 const MAX_MATERIAL_SIZE = 50 * 1024 * 1024;
 
@@ -65,13 +66,31 @@ export async function uploadCourseMaterial(
   }
 
   const storedName = `${randomUUID()}${extension}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "materials", courseId);
-  const uploadPath = path.join(uploadDir, storedName);
-  const publicUrl = `/uploads/materials/${courseId}/${storedName}`;
 
   try {
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(uploadPath, Buffer.from(await file.arrayBuffer()));
+    const buffer = Buffer.from(await file.arrayBuffer());
+    let publicUrl = await uploadToSupabaseStorage({
+      path: `materials/${courseId}/${storedName}`,
+      body: buffer,
+      contentType: file.type || "application/octet-stream",
+    });
+
+    if (!publicUrl) {
+      if (process.env.VERCEL) {
+        return {
+          success: false,
+          message: "Configure o Supabase Storage para enviar materiais em produÃ§Ã£o.",
+        };
+      }
+
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "materials", courseId);
+      const uploadPath = path.join(uploadDir, storedName);
+      publicUrl = `/uploads/materials/${courseId}/${storedName}`;
+
+      await mkdir(uploadDir, { recursive: true });
+      await writeFile(uploadPath, buffer);
+    }
+
     await prisma.courseMaterial.create({
       data: {
         courseId,

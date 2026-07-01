@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { ASSET_COVER_COLORS, DEFAULT_ASSET_TYPE, isDigitalAssetType } from "@/lib/digital-assets";
 import { prisma } from "@/lib/prisma";
-import { sanitizeRichHtml } from "@/lib/rich-html";
+import { sanitizeRichHtml } from "@/lib/rich-html-server";
 import {
   digitalAssetFlagSchema,
   digitalAssetIdentitySchema,
